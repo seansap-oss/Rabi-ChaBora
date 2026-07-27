@@ -29,7 +29,7 @@ interface CafeStore {
 
 export const useStore = create<CafeStore>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       menuItems: DEFAULT_MENU_ITEMS,
       cartItems: [],
       orders: [],

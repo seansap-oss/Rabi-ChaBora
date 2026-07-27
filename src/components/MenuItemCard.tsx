@@ -1,6 +1,6 @@
 'use client';
 
-import { Plus, Minus, Star } from 'lucide-react';
+import { Plus, Star } from 'lucide-react';
 import { MenuItem } from '@/lib/types';
 import { formatPrice } from '@/lib/utils';
 import { useStore } from '@/lib/store';

@@ -53,30 +53,39 @@ const FEATURE_HINTS: Record<keyof LicenseFeatures, string> = {
 const FREE_FEATURES: (keyof LicenseFeatures)[] = ['menu', 'customerOrdering'];
 
 export function LicenseProvider({ children }: { children: ReactNode }) {
-  const [features, setFeatures] = useState<LicenseFeatures>({
-    menu: true,
-    customerOrdering: true,
-    posDisplay: false,
-    kitchenDisplay: false,
-    deliveryDisplay: false,
-    menuSignage: false,
-    adminDashboard: false,
-    menuManagement: false,
-    reports: false,
-  });
-
-  // Load saved licenses from localStorage
-  useEffect(() => {
+  const [features, setFeatures] = useState<LicenseFeatures>(() => {
     const saved = localStorage.getItem('cafe-licenses');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        setFeatures(prev => ({ ...prev, ...parsed }));
+        return {
+          menu: true,
+          customerOrdering: true,
+          posDisplay: false,
+          kitchenDisplay: false,
+          deliveryDisplay: false,
+          menuSignage: false,
+          adminDashboard: false,
+          menuManagement: false,
+          reports: false,
+          ...parsed,
+        };
       } catch {
         // Invalid data, ignore
       }
     }
-  }, []);
+    return {
+      menu: true,
+      customerOrdering: true,
+      posDisplay: false,
+      kitchenDisplay: false,
+      deliveryDisplay: false,
+      menuSignage: false,
+      adminDashboard: false,
+      menuManagement: false,
+      reports: false,
+    };
+  });
 
   // Save to localStorage whenever features change
   useEffect(() => {

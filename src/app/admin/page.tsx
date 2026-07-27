@@ -7,7 +7,6 @@ import {
   Settings, 
   ChefHat, 
   TrendingUp, 
-  CreditCard, 
   Smartphone, 
   Banknote,
   Calendar,
@@ -20,15 +19,11 @@ import Header from '@/components/Header';
 import { useStore } from '@/lib/store';
 import { formatPrice, calculateSales, getTotalSales } from '@/lib/utils';
 import { Order } from '@/lib/types';
-import { useLicense } from '@/lib/license';
 
 export default function AdminPage() {
   const localOrders = useStore((state) => state.orders);
   const [orders, setOrders] = useState<Order[]>(localOrders);
   const [period, setPeriod] = useState<'day' | 'week' | 'month'>('day');
-  const [salesData, setSalesData] = useState(calculateSales(localOrders, 'day'));
-  const [totals, setTotals] = useState(getTotalSales(localOrders));
-  const { isUnlocked } = useLicense();
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -48,11 +43,9 @@ export default function AdminPage() {
     return () => clearInterval(interval);
   }, [localOrders]);
 
-  useEffect(() => {
-    setSalesData(calculateSales(orders, period));
-    setTotals(getTotalSales(orders));
-  }, [orders, period]);
-
+  // Derive sales data directly from orders
+  const currentSalesData = calculateSales(orders, period);
+  const currentTotals = getTotalSales(orders);
   const pendingPayments = orders.filter(o => o.status === 'pending_payment').length;
 
   return (
@@ -85,7 +78,7 @@ export default function AdminPage() {
               </div>
               <div>
                 <p className="text-xs text-stone-500">Today&apos;s Sales</p>
-                <p className="font-bold text-stone-800">{formatPrice(totals.total)}</p>
+                <p className="font-bold text-stone-800">{formatPrice(currentTotals.total)}</p>
               </div>
             </div>
           </div>
@@ -97,7 +90,7 @@ export default function AdminPage() {
               </div>
               <div>
                 <p className="text-xs text-stone-500">Total Orders</p>
-                <p className="font-bold text-stone-800">{totals.orders}</p>
+                <p className="font-bold text-stone-800">{currentTotals.orders}</p>
               </div>
             </div>
           </div>
@@ -109,7 +102,7 @@ export default function AdminPage() {
               </div>
               <div>
                 <p className="text-xs text-stone-500">Cash</p>
-                <p className="font-bold text-stone-800">{formatPrice(totals.cash)}</p>
+                <p className="font-bold text-stone-800">{formatPrice(currentTotals.cash)}</p>
               </div>
             </div>
           </div>
@@ -121,7 +114,7 @@ export default function AdminPage() {
               </div>
               <div>
                 <p className="text-xs text-stone-500">Digital</p>
-                <p className="font-bold text-stone-800">{formatPrice(totals.upi + totals.gpay)}</p>
+                <p className="font-bold text-stone-800">{formatPrice(currentTotals.upi + currentTotals.gpay)}</p>
               </div>
             </div>
           </div>
@@ -177,7 +170,7 @@ export default function AdminPage() {
           </div>
           
           <div className="space-y-3">
-            {salesData.slice(period === 'day' ? -1 : period === 'week' ? -7 : -30).reverse().map((day) => (
+            {currentSalesData.slice(period === 'day' ? -1 : period === 'week' ? -7 : -30).reverse().map((day) => (
               <div key={day.date} className="flex justify-between items-center py-2 border-b border-stone-100 last:border-0">
                 <span className="text-sm text-stone-600">
                   {new Date(day.date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}

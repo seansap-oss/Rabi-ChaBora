@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Bell, Check, ChefHat, RefreshCw, Clock, AlertCircle } from 'lucide-react';
+import { Check, ChefHat, RefreshCw, Clock, AlertCircle } from 'lucide-react';
 import { Order, OrderStatus } from '@/lib/types';
 import { formatPrice, formatDate } from '@/lib/utils';
 
@@ -35,30 +35,30 @@ export default function KitchenPage() {
     osc.stop(ctx.currentTime + 0.3);
   };
 
-  const fetchOrders = async () => {
-    try {
-      const response = await fetch('/api/orders');
-      if (response.ok) {
-        const data = await response.json();
-        const kitchenOrders = data.filter((o: Order) => 
-          ['paid', 'preparing', 'ready'].includes(o.status)
-        );
-        
-        if (kitchenOrders.length > prevCount.current && prevCount.current > 0) {
-          playNotification();
-        }
-        prevCount.current = kitchenOrders.length;
-        
-        setOrders(data);
-      }
-    } catch {
-      console.error('Failed to fetch orders');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const response = await fetch('/api/orders');
+        if (response.ok) {
+          const data = await response.json();
+          const kitchenOrders = data.filter((o: Order) => 
+            ['paid', 'preparing', 'ready'].includes(o.status)
+          );
+          
+          if (kitchenOrders.length > prevCount.current && prevCount.current > 0) {
+            playNotification();
+          }
+          prevCount.current = kitchenOrders.length;
+          
+          setOrders(data);
+        }
+      } catch {
+        console.error('Failed to fetch orders');
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchOrders();
     const interval = setInterval(fetchOrders, 3000);
     return () => clearInterval(interval);

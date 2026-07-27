@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Truck, Check, RefreshCw, Package, Clock, MapPin } from 'lucide-react';
+import { Truck, Check, Package, Clock } from 'lucide-react';
 import { Order, OrderStatus } from '@/lib/types';
 import { formatPrice, formatDate } from '@/lib/utils';
 
@@ -30,21 +30,21 @@ export default function DeliveryPage() {
     osc.stop(ctx.currentTime + 0.3);
   };
 
-  const fetchOrders = async () => {
-    try {
-      const response = await fetch('/api/orders');
-      if (response.ok) {
-        const data = await response.json();
-        setOrders(data);
-      }
-    } catch {
-      console.error('Failed to fetch orders');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const response = await fetch('/api/orders');
+        if (response.ok) {
+          const data = await response.json();
+          setOrders(data);
+        }
+      } catch {
+        console.error('Failed to fetch orders');
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchOrders();
     const interval = setInterval(fetchOrders, 5000);
     return () => clearInterval(interval);

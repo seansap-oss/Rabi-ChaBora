@@ -1,21 +1,22 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { Save, QrCode, Share2, Camera, Globe, AtSign, Image as ImageIcon, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import Header from '@/components/Header';
 import { useStore } from '@/lib/store';
 
+function getOrigin() {
+  if (typeof window !== 'undefined') return window.location.origin;
+  return 'https://cafe-ui.vercel.app';
+}
+
 export default function SettingsPage() {
   const settings = useStore((state) => state.settings);
   const updateSettings = useStore((state) => state.updateSettings);
-  const [origin, setOrigin] = useState('');
+  const [origin] = useState(getOrigin);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
-
-  useEffect(() => {
-    setOrigin(window.location.origin);
-  }, []);
   
   const [formData, setFormData] = useState({
     name: settings.name,

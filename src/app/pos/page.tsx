@@ -3,14 +3,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { 
   Check, 
-  X, 
   Clock, 
   Banknote, 
   Smartphone, 
   CreditCard, 
   Volume2,
   RefreshCw,
-  ChevronRight,
   AlertCircle
 } from 'lucide-react';
 import { Order, OrderStatus } from '@/lib/types';
@@ -73,29 +71,28 @@ export default function POSPage() {
     }
   };
 
-  // Fetch orders
-  const fetchOrders = async () => {
-    try {
-      const response = await fetch('/api/orders');
-      if (response.ok) {
-        const data = await response.json();
-        
-        // Check for new orders
-        if (data.length > prevCount.current && prevCount.current > 0) {
-          playNotification('new_order');
-        }
-        prevCount.current = data.length;
-        
-        setOrders(data);
-      }
-    } catch {
-      console.error('Failed to fetch orders');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const response = await fetch('/api/orders');
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Check for new orders
+          if (data.length > prevCount.current && prevCount.current > 0) {
+            playNotification('new_order');
+          }
+          prevCount.current = data.length;
+          
+          setOrders(data);
+        }
+      } catch {
+        console.error('Failed to fetch orders');
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchOrders();
     const interval = setInterval(fetchOrders, 2000); // Poll every 2 seconds
     return () => clearInterval(interval);

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { CreditCard, Smartphone, Banknote, Check, QrCode, ArrowRight } from 'lucide-react';
+import { Smartphone, Banknote, Check, QrCode, ArrowRight } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import Header from '@/components/Header';
 import { useStore } from '@/lib/store';
@@ -20,29 +20,26 @@ export default function CheckoutPage() {
   const [orderType, setOrderType] = useState<'dine_in' | 'takeaway' | 'delivery'>('dine_in');
   const [customerName, setCustomerName] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const [paymentStep, setPaymentStep] = useState<'select' | 'pay' | 'confirm'>('select');
+  const nowRef = useRef(0);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (mounted && cartItems.length === 0) {
+    nowRef.current = Date.now();
+    if (cartItems.length === 0) {
       router.replace('/');
     }
-  }, [mounted, cartItems.length, router]);
+  }, [cartItems.length, router]);
 
   const total = cartItems.reduce((sum, item) => sum + item.menuItem.price * item.quantity, 0);
 
-  const createOrder = async (status: Order['status'] = 'paid') => {
+  const submitOrder = async (status: Order['status'] = 'paid', createdAt: number) => {
     const order: Order = {
       id: generateOrderId(),
       items: cartItems,
       total,
       paymentMethod,
       status,
-      createdAt: Date.now(),
+      createdAt,
       orderType,
       customerName: customerName || undefined,
     };
@@ -69,11 +66,11 @@ export default function CheckoutPage() {
     
     if (paymentMethod === 'cash') {
       // Cash: Order goes to POS as pending payment
-      await createOrder('pending_payment');
+      await submitOrder('pending_payment', nowRef.current);
     } else if (paymentMethod === 'gpay') {
       // Open GPay UPI intent
       const upiUrl = `upi://pay?pa=${settings.upiId}&pn=${encodeURIComponent(settings.name)}&am=${total}&cu=INR`;
-      window.location.href = upiUrl;
+      window.open(upiUrl, '_blank');
       // After payment, user confirms
       setPaymentStep('confirm');
       setIsProcessing(false);
@@ -89,20 +86,9 @@ export default function CheckoutPage() {
 
   const handleUPIConfirm = async () => {
     setIsProcessing(true);
-    await createOrder('paid');
+    await submitOrder('paid', nowRef.current);
     setIsProcessing(false);
   };
-
-  if (!mounted) {
-    return (
-      <div className="min-h-screen bg-stone-50">
-        <Header title="Checkout" showBack />
-        <div className="max-w-4xl mx-auto px-4 py-12 text-center">
-          <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-        </div>
-      </div>
-    );
-  }
 
   if (cartItems.length === 0) {
     return null;

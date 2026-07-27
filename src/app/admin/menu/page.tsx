@@ -11,7 +11,6 @@ import {
   Save,
   Eye,
   EyeOff,
-  ImageIcon,
   Link
 } from 'lucide-react';
 import Header from '@/components/Header';
