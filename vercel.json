@@ -1,4 +1,4 @@
 {
-  "cleanOutput": true,
+  "framework": "nextjs",
   "trailingSlash": false
 }
