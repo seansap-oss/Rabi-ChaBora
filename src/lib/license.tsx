@@ -52,45 +52,41 @@ const FEATURE_HINTS: Record<keyof LicenseFeatures, string> = {
 // Base features that are always free
 const FREE_FEATURES: (keyof LicenseFeatures)[] = ['menu', 'customerOrdering'];
 
+const DEFAULT_FEATURES: LicenseFeatures = {
+  menu: true,
+  customerOrdering: true,
+  posDisplay: false,
+  kitchenDisplay: false,
+  deliveryDisplay: false,
+  menuSignage: false,
+  adminDashboard: false,
+  menuManagement: false,
+  reports: false,
+};
+
 export function LicenseProvider({ children }: { children: ReactNode }) {
-  const [features, setFeatures] = useState<LicenseFeatures>(() => {
+  const [features, setFeatures] = useState<LicenseFeatures>(DEFAULT_FEATURES);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
     const saved = localStorage.getItem('cafe-licenses');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        return {
-          menu: true,
-          customerOrdering: true,
-          posDisplay: false,
-          kitchenDisplay: false,
-          deliveryDisplay: false,
-          menuSignage: false,
-          adminDashboard: false,
-          menuManagement: false,
-          reports: false,
-          ...parsed,
-        };
+        setFeatures({ ...DEFAULT_FEATURES, ...parsed });
       } catch {
         // Invalid data, ignore
       }
     }
-    return {
-      menu: true,
-      customerOrdering: true,
-      posDisplay: false,
-      kitchenDisplay: false,
-      deliveryDisplay: false,
-      menuSignage: false,
-      adminDashboard: false,
-      menuManagement: false,
-      reports: false,
-    };
-  });
+    setLoaded(true);
+  }, []);
 
   // Save to localStorage whenever features change
   useEffect(() => {
-    localStorage.setItem('cafe-licenses', JSON.stringify(features));
-  }, [features]);
+    if (loaded) {
+      localStorage.setItem('cafe-licenses', JSON.stringify(features));
+    }
+  }, [features, loaded]);
 
   const isUnlocked = (feature: keyof LicenseFeatures) => {
     return features[feature] || false;
