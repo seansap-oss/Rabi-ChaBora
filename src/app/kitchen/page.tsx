@@ -35,33 +35,34 @@ export default function KitchenPage() {
     osc.stop(ctx.currentTime + 0.3);
   };
 
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const response = await fetch('/api/orders');
-        if (response.ok) {
-          const data = await response.json();
-          const kitchenOrders = data.filter((o: Order) => 
-            ['paid', 'preparing', 'ready'].includes(o.status)
-          );
-          
-          if (kitchenOrders.length > prevCount.current && prevCount.current > 0) {
-            playNotification();
-          }
-          prevCount.current = kitchenOrders.length;
-          
-          setOrders(data);
+  const fetchOrders = async () => {
+    try {
+      const response = await fetch('/api/orders');
+      if (response.ok) {
+        const data = await response.json();
+        const kitchenOrders = data.filter((o: Order) => 
+          ['paid', 'preparing', 'ready'].includes(o.status)
+        );
+        
+        if (kitchenOrders.length > prevCount.current && prevCount.current > 0) {
+          playNotification();
         }
-      } catch {
-        console.error('Failed to fetch orders');
-      } finally {
-        setLoading(false);
+        prevCount.current = kitchenOrders.length;
+        
+        setOrders(data);
       }
-    };
+    } catch {
+      console.error('Failed to fetch orders');
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchOrders();
-    const interval = setInterval(fetchOrders, 3000);
+    const interval = setInterval(() => fetchOrders(), 3000);
     return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const updateStatus = async (orderId: string, status: OrderStatus) => {

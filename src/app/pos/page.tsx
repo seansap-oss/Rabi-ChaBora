@@ -71,31 +71,32 @@ export default function POSPage() {
     }
   };
 
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const response = await fetch('/api/orders');
-        if (response.ok) {
-          const data = await response.json();
-          
-          // Check for new orders
-          if (data.length > prevCount.current && prevCount.current > 0) {
-            playNotification('new_order');
-          }
-          prevCount.current = data.length;
-          
-          setOrders(data);
+  const fetchOrders = async () => {
+    try {
+      const response = await fetch('/api/orders');
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Check for new orders
+        if (data.length > prevCount.current && prevCount.current > 0) {
+          playNotification('new_order');
         }
-      } catch {
-        console.error('Failed to fetch orders');
-      } finally {
-        setLoading(false);
+        prevCount.current = data.length;
+        
+        setOrders(data);
       }
-    };
+    } catch {
+      console.error('Failed to fetch orders');
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchOrders();
-    const interval = setInterval(fetchOrders, 2000); // Poll every 2 seconds
+    const interval = setInterval(() => fetchOrders(), 2000);
     return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Approve cash payment
