@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Shield, Eye, EyeOff } from 'lucide-react';
 import { useOwnerStore } from '@/lib/ownerStore';
 
@@ -12,13 +12,25 @@ export default function OwnerGate({ children }: OwnerGateProps) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [isSettingUp, setIsSettingUp] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [mounted, setMounted] = useState(false);
   
   const isSetup = useOwnerStore((state) => state.isSetup());
   const isLoggedIn = useOwnerStore((state) => state.isLoggedIn);
   const login = useOwnerStore((state) => state.login);
   const setupPassword = useOwnerStore((state) => state.setupPassword);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   if (isLoggedIn) {
     return <>{children}</>;
@@ -27,7 +39,6 @@ export default function OwnerGate({ children }: OwnerGateProps) {
   const handleLogin = () => {
     setError('');
     if (!isSetup) {
-      // First time - set up password
       if (password.length < 4) {
         setError('Password must be at least 4 characters');
         return;
@@ -111,7 +122,7 @@ export default function OwnerGate({ children }: OwnerGateProps) {
 
         <div className="mt-4 bg-amber-50 rounded-xl p-3 border border-amber-100">
           <p className="text-xs text-amber-700 text-center">
-            🔒 Your password is stored on this device only. All sales data is saved locally.
+            Your password is stored on this device only. All sales data is saved locally.
           </p>
         </div>
       </div>
