@@ -4,11 +4,15 @@ import { useEffect, useRef, useState } from 'react';
 import { Truck, Check, Package, Clock } from 'lucide-react';
 import { Order, OrderStatus } from '@/lib/types';
 import { formatPrice, formatDate } from '@/lib/utils';
+import { useWhatsAppStore, sendWhatsAppMessage, formatOrderMessage } from '@/lib/whatsappStore';
+import { useStore } from '@/lib/store';
 
 export default function DeliveryPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const waSettings = useWhatsAppStore((state) => state.settings);
+  const cafeSettings = useStore((state) => state.settings);
 
   useEffect(() => {
     audioContextRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
@@ -66,7 +70,20 @@ export default function DeliveryPage() {
         body: JSON.stringify({ id: orderId, status }),
       });
       
-      playNotification();
+      if (status === 'completed' && waSettings.enabled && waSettings.deliveryConfirmation && waSettings.recipients.length > 0) {
+        const order = orders.find(o => o.id === orderId);
+        if (order && order.customerName) {
+          const msg = formatOrderMessage(waSettings.templates.deliveryConfirmation, {
+            name: order.customerName,
+            id: orderId.slice(-8),
+            items: '',
+            total: formatPrice(order.total),
+          });
+          waSettings.recipients.forEach(num => sendWhatsAppMessage(num, msg));
+        }
+      }
+      
+      if (status === 'completed') playNotification();
       setOrders(prev => prev.map(o => 
         o.id === orderId ? { ...o, status } : o
       ));

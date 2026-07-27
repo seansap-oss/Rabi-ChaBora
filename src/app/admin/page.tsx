@@ -26,6 +26,7 @@ import { useStore } from '@/lib/store';
 import { useOwnerStore } from '@/lib/ownerStore';
 import { formatPrice, calculateSales, getTotalSales } from '@/lib/utils';
 import { Order } from '@/lib/types';
+import { useWhatsAppStore, sendWhatsAppMessage, formatOrderMessage } from '@/lib/whatsappStore';
 
 function AdminContent() {
   const localOrders = useStore((state) => state.orders);
@@ -40,6 +41,7 @@ function AdminContent() {
   const importData = useOwnerStore((state) => state.importData);
   const lastAutoSend = useOwnerStore((state) => state.lastAutoSend);
   const setLastAutoSend = useOwnerStore((state) => state.setLastAutoSend);
+  const waSettings = useWhatsAppStore((state) => state.settings);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -80,12 +82,14 @@ function AdminContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-send to WhatsApp at 10 PM
+  // Auto-send to WhatsApp at configured time
   useEffect(() => {
     const checkAutoSend = () => {
+      if (!waSettings.enabled || !waSettings.dailyReport || waSettings.recipients.length === 0) return;
       const now = new Date();
       const today = now.toISOString().split('T')[0];
-      if (now.getHours() === 22 && lastAutoSend !== today) {
+      const [targetHour, targetMin] = waSettings.reportTime.split(':').map(Number);
+      if (now.getHours() === targetHour && now.getMinutes() === targetMin && lastAutoSend !== today) {
         const total = ownerSales
           .filter(s => new Date(s.createdAt).toISOString().split('T')[0] === today)
           .reduce((sum, s) => sum + s.total, 0);
@@ -93,14 +97,13 @@ function AdminContent() {
           .filter(s => new Date(s.createdAt).toISOString().split('T')[0] === today)
           .length;
         
-        const text = encodeURIComponent(
-          `📊 ${settings.name} - Daily Sales Report\n` +
-          `📅 ${now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}\n\n` +
-          `💰 Total Sales: ${formatPrice(total)}\n` +
-          `🧾 Total Orders: ${count}\n\n` +
-          `Auto-generated at ${now.toLocaleTimeString('en-IN')}`
-        );
-        window.open(`https://wa.me/?text=${text}`, '_blank');
+        const msg = formatOrderMessage(waSettings.templates.dailyReport, {
+          name: settings.name,
+          id: today,
+          items: '',
+          total: formatPrice(total),
+        });
+        waSettings.recipients.forEach(num => sendWhatsAppMessage(num, msg));
         setLastAutoSend(today);
       }
     };
@@ -109,7 +112,7 @@ function AdminContent() {
     checkAutoSend();
     return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownerSales, lastAutoSend]);
+  }, [ownerSales, lastAutoSend, waSettings]);
 
   const currentSalesData = calculateSales(orders, period);
   const currentTotals = getTotalSales(orders);
@@ -128,8 +131,14 @@ function AdminContent() {
   };
 
   const shareWhatsApp = () => {
-    const text = encodeURIComponent(getShareText());
-    window.open(`https://wa.me/?text=${text}`, '_blank');
+    const msg = getShareText();
+    if (waSettings.enabled && waSettings.recipients.length > 0) {
+      waSettings.recipients.forEach(num => sendWhatsAppMessage(num, msg));
+      alert('Report sent via WhatsApp Business API!');
+    } else {
+      const text = encodeURIComponent(msg);
+      window.open(`https://wa.me/?text=${text}`, '_blank');
+    }
   };
 
   const downloadReport = () => {

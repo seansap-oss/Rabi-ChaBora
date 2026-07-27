@@ -9,6 +9,7 @@ import { useStore } from '@/lib/store';
 import { useUserStore } from '@/lib/userStore';
 import { formatPrice, generateOrderId } from '@/lib/utils';
 import { Order } from '@/lib/types';
+import { useWhatsAppStore, sendWhatsAppMessage, formatOrderMessage } from '@/lib/whatsappStore';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -63,6 +64,19 @@ export default function CheckoutPage() {
         paymentMethod,
         createdAt,
       });
+    }
+    
+    // Send WhatsApp order confirmation to customer and staff
+    const waSettings = useWhatsAppStore.getState().settings;
+    if (waSettings.enabled && waSettings.orderConfirmation && waSettings.recipients.length > 0) {
+      const items = cartItems.map(i => `${i.quantity}x ${i.menuItem.name}`).join(', ');
+      const msg = formatOrderMessage(waSettings.templates.orderConfirmation, {
+        name: customerName || 'Customer',
+        id: order.id.slice(-8),
+        items,
+        total: formatPrice(total),
+      });
+      waSettings.recipients.forEach(num => sendWhatsAppMessage(num, msg));
     }
     
     // Post to API

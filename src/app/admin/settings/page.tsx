@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Save, QrCode, Share2, Camera, Globe, AtSign, Image as ImageIcon, X, Palette, Type, Printer, Lock } from 'lucide-react';
+import { Save, QrCode, Share2, Camera, Globe, AtSign, Image as ImageIcon, X, Palette, Type, Printer, Lock, MessageCircle, Plus, Trash2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import Header from '@/components/Header';
 import ReceiptDesigner from '@/components/ReceiptDesigner';
 import { useStore } from '@/lib/store';
 import { useLicense } from '@/lib/license';
 import { FONT_OPTIONS } from '@/lib/types';
+import { useWhatsAppStore, sendWhatsAppMessage, formatOrderMessage, getActiveFeatureCount, getWhatsAppMonthlyTotal } from '@/lib/whatsappStore';
 
 function getOrigin() {
   if (typeof window !== 'undefined') return window.location.origin;
@@ -22,8 +23,18 @@ export default function SettingsPage() {
   const [origin] = useState(getOrigin);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'general' | 'theme' | 'receipt'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'theme' | 'receipt' | 'whatsapp'>('general');
   const { isUnlocked, unlockFeature, getPasswordHint } = useLicense();
+  const waSettings = useWhatsAppStore((state) => state.settings);
+  const updateWASettings = useWhatsAppStore((state) => state.updateSettings);
+  const toggleFeature = useWhatsAppStore((state) => state.toggleFeature);
+  const addRecipient = useWhatsAppStore((state) => state.addRecipient);
+  const removeRecipient = useWhatsAppStore((state) => state.removeRecipient);
+  const updateTemplates = useWhatsAppStore((state) => state.updateTemplates);
+  const [waPhone, setWaPhone] = useState('');
+  const [waPhoneError, setWaPhoneError] = useState('');
+  const [testPhone, setTestPhone] = useState('');
+  const [testMessage, setTestMessage] = useState('');
   const [licenseInput, setLicenseInput] = useState('');
   const [licenseError, setLicenseError] = useState('');
   
@@ -190,6 +201,15 @@ export default function SettingsPage() {
           >
             <Printer className="w-4 h-4" />
             Receipt
+          </button>
+          <button
+            onClick={() => setActiveTab('whatsapp')}
+            className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+              activeTab === 'whatsapp' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500'
+            }`}
+          >
+            <MessageCircle className="w-4 h-4" />
+            WhatsApp
           </button>
         </div>
 
@@ -564,6 +584,196 @@ export default function SettingsPage() {
             </div>
           </div>
         )}
+        </>
+        )}
+
+        {/* WhatsApp Tab */}
+        {activeTab === 'whatsapp' && (<>
+          {/* WhatsApp Overview */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-stone-100 mb-6">
+            <div className="flex items-center gap-3 mb-4">
+              <MessageCircle className="w-5 h-5 text-green-600" />
+              <h2 className="font-semibold text-stone-800">WhatsApp Notifications</h2>
+            </div>
+            <p className="text-sm text-stone-500 mb-4">
+              Send order updates, delivery confirmations, daily reports, and marketing messages via WhatsApp Business API.
+            </p>
+            
+            <div className="flex items-center justify-between mb-4 p-3 bg-stone-50 rounded-xl">
+              <span className="text-sm font-medium text-stone-700">Enable WhatsApp</span>
+              <button
+                onClick={() => updateWASettings({ enabled: !waSettings.enabled })}
+                className={`w-12 h-6 rounded-full transition-colors ${waSettings.enabled ? 'bg-green-500' : 'bg-stone-300'}`}
+              >
+                <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${waSettings.enabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
+              </button>
+            </div>
+
+            {waSettings.enabled && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 bg-green-50 rounded-xl text-center">
+                  <p className="text-2xl font-bold text-green-700">{getActiveFeatureCount(waSettings)}</p>
+                  <p className="text-xs text-green-600">Active Features</p>
+                </div>
+                <div className="p-3 bg-blue-50 rounded-xl text-center">
+                  <p className="text-2xl font-bold text-blue-700">₹{getWhatsAppMonthlyTotal()}</p>
+                  <p className="text-xs text-blue-600">Monthly Total</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {waSettings.enabled && (<>
+            {/* Recipients */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-stone-100 mb-6">
+              <h3 className="font-semibold text-stone-800 mb-3">Recipients</h3>
+              <div className="space-y-2 mb-4">
+                {waSettings.recipients.map((num) => (
+                  <div key={num} className="flex items-center justify-between p-2 bg-stone-50 rounded-lg">
+                    <span className="text-sm font-mono text-stone-700">{num}</span>
+                    <button onClick={() => removeRecipient(num)} className="text-red-400 hover:text-red-600">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="tel"
+                  value={waPhone}
+                  onChange={(e) => { setWaPhone(e.target.value); setWaPhoneError(''); }}
+                  placeholder="+91 98765 43210"
+                  className="flex-1 px-3 py-2 border border-stone-200 rounded-lg text-sm"
+                />
+                <button
+                  onClick={() => {
+                    if (!waPhone.trim()) return;
+                    const clean = waPhone.replace(/\s/g, '');
+                    if (clean.length < 10) { setWaPhoneError('Enter valid number'); return; }
+                    addRecipient(clean);
+                    setWaPhone('');
+                  }}
+                  className="bg-green-500 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1"
+                >
+                  <Plus className="w-4 h-4" /> Add
+                </button>
+              </div>
+              {waPhoneError && <p className="text-red-500 text-xs mt-1">{waPhoneError}</p>}
+            </div>
+
+            {/* Daily Report Time */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-stone-100 mb-6">
+              <h3 className="font-semibold text-stone-800 mb-3">Daily Report Time</h3>
+              <div className="flex items-center gap-3">
+                <input
+                  type="time"
+                  value={waSettings.reportTime}
+                  onChange={(e) => updateWASettings({ reportTime: e.target.value })}
+                  className="px-3 py-2 border border-stone-200 rounded-lg text-sm"
+                />
+                <span className="text-sm text-stone-500">Auto-send daily sales report</span>
+              </div>
+            </div>
+
+            {/* Feature Toggles */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-stone-100 mb-6">
+              <h3 className="font-semibold text-stone-800 mb-3">Notification Features</h3>
+              <div className="space-y-3">
+                {([
+                  { key: 'orderConfirmation' as const, label: 'Order Confirmation', price: 99, desc: 'WhatsApp when order is confirmed' },
+                  { key: 'readyNotification' as const, label: 'Ready Notification', price: 99, desc: 'WhatsApp when order is ready' },
+                  { key: 'deliveryConfirmation' as const, label: 'Delivery Confirmation', price: 149, desc: 'WhatsApp when delivery is completed' },
+                  { key: 'feedbackRequest' as const, label: 'Feedback Request', price: 99, desc: 'Auto-send feedback link after order' },
+                  { key: 'dailyReport' as const, label: 'Daily Report', price: 199, desc: 'Auto-send sales report at configured time' },
+                  { key: 'monthlyReport' as const, label: 'Monthly Report', price: 249, desc: 'Auto-send monthly summary' },
+                  { key: 'reviewRequests' as const, label: 'Review Requests', price: 149, desc: 'Ask for Google reviews after orders' },
+                  { key: 'promoBroadcast' as const, label: 'Promo Broadcast', price: 199, desc: 'Send promotional messages to customers' },
+                  { key: 'bookingConfirmation' as const, label: 'Booking Confirmation', price: 149, desc: 'Table booking WhatsApp confirmations' },
+                  { key: 'birthdayWishes' as const, label: 'Birthday Wishes', price: 99, desc: 'Auto-send birthday discount codes' },
+                ]).map(({ key, label, price, desc }) => (
+                  <div key={key} className="flex items-center justify-between p-3 bg-stone-50 rounded-xl">
+                    <div>
+                      <p className="text-sm font-medium text-stone-700">{label}</p>
+                      <p className="text-xs text-stone-400">{desc}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-stone-500">₹{price}/mo</span>
+                      <button
+                        onClick={() => toggleFeature(key)}
+                        className={`w-10 h-5 rounded-full transition-colors ${waSettings[key] ? 'bg-green-500' : 'bg-stone-300'}`}
+                      >
+                        <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${waSettings[key] ? 'translate-x-5.5' : 'translate-x-0.5'}`} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Message Templates */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-stone-100 mb-6">
+              <h3 className="font-semibold text-stone-800 mb-3">Message Templates</h3>
+              <p className="text-xs text-stone-400 mb-3">Use {'{name}'}, {'{id}'}, {'{items}'}, {'{total}'}</p>
+              <div className="space-y-3">
+                {([
+                  { key: 'orderConfirmation' as const, label: 'Order Confirmation' },
+                  { key: 'readyNotification' as const, label: 'Ready Notification' },
+                  { key: 'deliveryConfirmation' as const, label: 'Delivery Confirmation' },
+                  { key: 'feedbackRequest' as const, label: 'Feedback Request' },
+                  { key: 'dailyReport' as const, label: 'Daily Report' },
+                  { key: 'monthlyReport' as const, label: 'Monthly Report' },
+                  { key: 'reviewRequest' as const, label: 'Review Request' },
+                  { key: 'promoMessage' as const, label: 'Promo Message' },
+                  { key: 'bookingConfirmation' as const, label: 'Booking Confirmation' },
+                  { key: 'birthdayWish' as const, label: 'Birthday Wish' },
+                ]).map(({ key, label }) => (
+                  <div key={key}>
+                    <label className="text-sm font-medium text-stone-700 mb-1 block">{label}</label>
+                    <textarea
+                      value={waSettings.templates[key]}
+                      onChange={(e) => updateTemplates({ [key]: e.target.value })}
+                      className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm resize-none"
+                      rows={3}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Test Message */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-stone-100 mb-6">
+              <h3 className="font-semibold text-stone-800 mb-3">Test WhatsApp</h3>
+              <div className="space-y-2">
+                <input
+                  type="tel"
+                  value={testPhone}
+                  onChange={(e) => setTestPhone(e.target.value)}
+                  placeholder="Recipient phone (+91...)"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm"
+                />
+                <textarea
+                  value={testMessage}
+                  onChange={(e) => setTestMessage(e.target.value)}
+                  placeholder="Test message..."
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm resize-none"
+                  rows={2}
+                />
+                <button
+                  onClick={() => {
+                    if (testPhone && testMessage) {
+                      sendWhatsAppMessage(testPhone, testMessage);
+                      alert('Message sent via WhatsApp Business API!');
+                      setTestPhone('');
+                      setTestMessage('');
+                    }
+                  }}
+                  className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                >
+                  Send Test Message
+                </button>
+              </div>
+            </div>
+          </>)}
         </>
         )}
 

@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { Order, OrderStatus } from '@/lib/types';
 import { formatPrice, formatDate } from '@/lib/utils';
+import { useWhatsAppStore, sendWhatsAppMessage, formatOrderMessage } from '@/lib/whatsappStore';
+import { useStore } from '@/lib/store';
 
 export default function POSPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -20,6 +22,8 @@ export default function POSPage() {
   const [filter, setFilter] = useState<'all' | 'pending_payment' | 'paid' | 'preparing' | 'ready'>('all');
   const prevCount = useRef(0);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const waSettings = useWhatsAppStore((state) => state.settings);
+  const cafeSettings = useStore((state) => state.settings);
 
   // Initialize audio context
   useEffect(() => {
@@ -118,6 +122,21 @@ export default function POSPage() {
       
       playNotification('payment_received');
       
+      // Send WhatsApp order confirmation
+      if (waSettings.enabled && waSettings.orderConfirmation && waSettings.recipients.length > 0) {
+        const order = orders.find(o => o.id === orderId);
+        if (order && order.customerName) {
+          const items = order.items.map(i => `${i.quantity}x ${i.menuItem.name}`).join(', ');
+          const msg = formatOrderMessage(waSettings.templates.orderConfirmation, {
+            name: order.customerName,
+            id: orderId.slice(-8),
+            items,
+            total: formatPrice(order.total),
+          });
+          waSettings.recipients.forEach(num => sendWhatsAppMessage(num, msg));
+        }
+      }
+      
       // Update local state
       setOrders(prev => prev.map(o => 
         o.id === orderId ? { ...o, status: 'paid' as OrderStatus, paidAt: Date.now() } : o
@@ -138,6 +157,20 @@ export default function POSPage() {
       
       if (status === 'ready') {
         playNotification('order_ready');
+        
+        // Send WhatsApp ready notification
+        if (waSettings.enabled && waSettings.readyNotification && waSettings.recipients.length > 0) {
+          const order = orders.find(o => o.id === orderId);
+          if (order && order.customerName) {
+            const msg = formatOrderMessage(waSettings.templates.readyNotification, {
+              name: order.customerName,
+              id: orderId.slice(-8),
+              items: '',
+              total: formatPrice(order.total),
+            });
+            waSettings.recipients.forEach(num => sendWhatsAppMessage(num, msg));
+          }
+        }
       }
       
       setOrders(prev => prev.map(o => 

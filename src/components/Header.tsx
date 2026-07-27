@@ -1,7 +1,8 @@
 'use client';
 
+import { useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { ShoppingCart, ArrowLeft, Settings, LogIn } from 'lucide-react';
+import { ShoppingCart, ArrowLeft, Settings, LogIn, Eye, EyeOff } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { useUserStore } from '@/lib/userStore';
 
@@ -18,6 +19,57 @@ export default function Header({ title, showBack = false, showSettings = false }
   const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const isLoggedIn = useUserStore((state) => state.session?.loggedIn);
   const username = useUserStore((state) => state.session?.username);
+
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [showPw, setShowPw] = useState(false);
+  const [pwError, setPwError] = useState('');
+  
+  const tapCount = useRef(0);
+  const tapTimer = useRef<NodeJS.Timeout | null>(null);
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  const isLongPress = useRef(false);
+
+  const handleAdminAuth = () => {
+    if (adminPassword === 'admin123') {
+      window.location.href = '/admin';
+    } else {
+      setPwError('Wrong password');
+    }
+  };
+
+  const handleTap = useCallback(() => {
+    if (isLongPress.current) return;
+    
+    tapCount.current += 1;
+    
+    if (tapTimer.current) clearTimeout(tapTimer.current);
+    
+    tapTimer.current = setTimeout(() => {
+      if (tapCount.current >= 3) {
+        setShowPasswordModal(true);
+        setAdminPassword('');
+        setPwError('');
+      }
+      tapCount.current = 0;
+    }, 500);
+  }, []);
+
+  const handleTouchStart = useCallback(() => {
+    isLongPress.current = false;
+    longPressTimer.current = setTimeout(() => {
+      isLongPress.current = true;
+      setShowPasswordModal(true);
+      setAdminPassword('');
+      setPwError('');
+    }, 800);
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+    }
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-stone-200">
@@ -53,9 +105,17 @@ export default function Header({ title, showBack = false, showSettings = false }
         
         <div className="flex items-center gap-1 flex-shrink-0">
           {showSettings && (
-            <Link href="/admin" className="p-2 hover:bg-stone-100 rounded-full transition-colors">
+            <button
+              onClick={handleTap}
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+              onMouseDown={handleTouchStart}
+              onMouseUp={handleTouchEnd}
+              onMouseLeave={handleTouchEnd}
+              className="p-2 hover:bg-stone-100 rounded-full transition-colors"
+            >
               <Settings className="w-5 h-5 text-stone-600" />
-            </Link>
+            </button>
           )}
           {isLoggedIn ? (
             <Link href="/profile" className="flex items-center gap-1.5 px-2 py-1.5 hover:bg-stone-100 rounded-full transition-colors">
@@ -80,6 +140,52 @@ export default function Header({ title, showBack = false, showSettings = false }
           </Link>
         </div>
       </div>
+
+      {/* Admin Password Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
+            <h3 className="font-semibold text-stone-800 text-lg mb-1">Admin Access</h3>
+            <p className="text-sm text-stone-500 mb-4">Enter admin password to access settings</p>
+            
+            <div className="relative mb-3">
+              <input
+                type={showPw ? 'text' : 'password'}
+                value={adminPassword}
+                onChange={(e) => { setAdminPassword(e.target.value); setPwError(''); }}
+                className="w-full px-4 py-3 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-lg pr-12"
+                placeholder="Password"
+                autoFocus
+                onKeyDown={(e) => e.key === 'Enter' && handleAdminAuth()}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw(!showPw)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400"
+              >
+                {showPw ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+            
+            {pwError && <p className="text-red-500 text-sm mb-3">{pwError}</p>}
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowPasswordModal(false)}
+                className="flex-1 bg-stone-100 text-stone-700 py-2.5 rounded-xl font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAdminAuth}
+                className="flex-1 bg-stone-900 text-white py-2.5 rounded-xl font-medium"
+              >
+                Unlock
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

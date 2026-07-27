@@ -13,6 +13,16 @@ interface LicenseFeatures {
   menuManagement: boolean;
   reports: boolean;
   receiptPrinter: boolean;
+  waOrderConfirmation: boolean;
+  waReadyNotification: boolean;
+  waDeliveryConfirmation: boolean;
+  waFeedbackRequest: boolean;
+  waDailySalesReport: boolean;
+  waMonthlySummary: boolean;
+  waCustomerReviews: boolean;
+  waPromotionalBroadcast: boolean;
+  waReservationBooking: boolean;
+  waBirthdayOffers: boolean;
 }
 
 interface LicenseContextType {
@@ -21,11 +31,12 @@ interface LicenseContextType {
   unlockFeature: (feature: keyof LicenseFeatures, password: string) => boolean;
   lockFeature: (feature: keyof LicenseFeatures) => void;
   getPasswordHint: (feature: keyof LicenseFeatures) => string;
+  getActiveWhatsAppCount: () => number;
+  getWhatsAppMonthlyTotal: () => number;
 }
 
 const LicenseContext = createContext<LicenseContextType | null>(null);
 
-// Password map - in production, these would be hashed
 const FEATURE_PASSWORDS: Record<keyof LicenseFeatures, string> = {
   menu: 'cafe2024',
   customerOrdering: 'cafe2024',
@@ -37,6 +48,16 @@ const FEATURE_PASSWORDS: Record<keyof LicenseFeatures, string> = {
   menuManagement: 'menu123',
   reports: 'reports123',
   receiptPrinter: 'receipt123',
+  waOrderConfirmation: 'wa-confirm-001',
+  waReadyNotification: 'wa-ready-002',
+  waDeliveryConfirmation: 'wa-delivery-005',
+  waFeedbackRequest: 'wa-feedback-004',
+  waDailySalesReport: 'wa-report-003',
+  waMonthlySummary: 'wa-monthly-010',
+  waCustomerReviews: 'wa-reviews-006',
+  waPromotionalBroadcast: 'wa-promo-007',
+  waReservationBooking: 'wa-booking-008',
+  waBirthdayOffers: 'wa-bday-009',
 };
 
 const FEATURE_HINTS: Record<keyof LicenseFeatures, string> = {
@@ -50,9 +71,31 @@ const FEATURE_HINTS: Record<keyof LicenseFeatures, string> = {
   menuManagement: 'Included with any paid plan',
   reports: 'Unlock with Reports license key',
   receiptPrinter: 'Unlock with Receipt Printer license',
+  waOrderConfirmation: '₹99/mo - Order Confirmation',
+  waReadyNotification: '₹99/mo - Ready Notification',
+  waDeliveryConfirmation: '₹149/mo - Delivery Confirmation',
+  waFeedbackRequest: '₹99/mo - Feedback Request',
+  waDailySalesReport: '₹149/mo - Daily Sales Report',
+  waMonthlySummary: '₹199/mo - Monthly Summary',
+  waCustomerReviews: '₹199/mo - Customer Reviews',
+  waPromotionalBroadcast: '₹249/mo - Promotional Broadcast',
+  waReservationBooking: '₹199/mo - Reservation Booking',
+  waBirthdayOffers: '₹149/mo - Birthday Offers',
 };
 
-// Base features that are always free
+const WHATSAPP_PRICES: Record<string, number> = {
+  waOrderConfirmation: 99,
+  waReadyNotification: 99,
+  waDeliveryConfirmation: 149,
+  waFeedbackRequest: 99,
+  waDailySalesReport: 149,
+  waMonthlySummary: 199,
+  waCustomerReviews: 199,
+  waPromotionalBroadcast: 249,
+  waReservationBooking: 199,
+  waBirthdayOffers: 149,
+};
+
 const FREE_FEATURES: (keyof LicenseFeatures)[] = ['menu', 'customerOrdering'];
 
 const DEFAULT_FEATURES: LicenseFeatures = {
@@ -66,6 +109,16 @@ const DEFAULT_FEATURES: LicenseFeatures = {
   menuManagement: false,
   reports: false,
   receiptPrinter: false,
+  waOrderConfirmation: false,
+  waReadyNotification: false,
+  waDeliveryConfirmation: false,
+  waFeedbackRequest: false,
+  waDailySalesReport: false,
+  waMonthlySummary: false,
+  waCustomerReviews: false,
+  waPromotionalBroadcast: false,
+  waReservationBooking: false,
+  waBirthdayOffers: false,
 };
 
 export function LicenseProvider({ children }: { children: ReactNode }) {
@@ -85,7 +138,6 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
     setLoaded(true);
   }, []);
 
-  // Save to localStorage whenever features change
   useEffect(() => {
     if (loaded) {
       localStorage.setItem('cafe-licenses', JSON.stringify(features));
@@ -105,7 +157,7 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
   };
 
   const lockFeature = (feature: keyof LicenseFeatures) => {
-    if (FREE_FEATURES.includes(feature)) return; // Can't lock free features
+    if (FREE_FEATURES.includes(feature)) return;
     setFeatures(prev => ({ ...prev, [feature]: false }));
   };
 
@@ -113,8 +165,18 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
     return FEATURE_HINTS[feature];
   };
 
+  const getActiveWhatsAppCount = () => {
+    const waKeys = Object.keys(WHATSAPP_PRICES) as (keyof LicenseFeatures)[];
+    return waKeys.filter(k => features[k]).length;
+  };
+
+  const getWhatsAppMonthlyTotal = () => {
+    const waKeys = Object.keys(WHATSAPP_PRICES) as (keyof LicenseFeatures)[];
+    return waKeys.filter(k => features[k]).reduce((sum, k) => sum + (WHATSAPP_PRICES[k] || 0), 0);
+  };
+
   return (
-    <LicenseContext.Provider value={{ features, isUnlocked, unlockFeature, lockFeature, getPasswordHint }}>
+    <LicenseContext.Provider value={{ features, isUnlocked, unlockFeature, lockFeature, getPasswordHint, getActiveWhatsAppCount, getWhatsAppMonthlyTotal }}>
       {children}
     </LicenseContext.Provider>
   );
@@ -127,3 +189,5 @@ export function useLicense() {
   }
   return context;
 }
+
+export { WHATSAPP_PRICES };
