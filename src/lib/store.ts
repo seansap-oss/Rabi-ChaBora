@@ -2,13 +2,14 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { CartItem, MenuItem, CafeSettings, Order, DEFAULT_CAFE_SETTINGS, DEFAULT_MENU_ITEMS } from './types';
+import { CartItem, MenuItem, CafeSettings, ThemeSettings, Order, DEFAULT_CAFE_SETTINGS, DEFAULT_THEME, DEFAULT_MENU_ITEMS } from './types';
 
 interface CafeStore {
   menuItems: MenuItem[];
   cartItems: CartItem[];
   orders: Order[];
   settings: CafeSettings;
+  theme: ThemeSettings;
   
   setMenuItems: (items: MenuItem[]) => void;
   addMenuItem: (item: MenuItem) => void;
@@ -25,6 +26,7 @@ interface CafeStore {
   updateOrderStatus: (id: string, status: Order['status']) => void;
   
   updateSettings: (settings: Partial<CafeSettings>) => void;
+  updateTheme: (theme: Partial<ThemeSettings>) => void;
 }
 
 export const useStore = create<CafeStore>()(
@@ -34,6 +36,7 @@ export const useStore = create<CafeStore>()(
       cartItems: [],
       orders: [],
       settings: DEFAULT_CAFE_SETTINGS,
+      theme: DEFAULT_THEME,
       
       setMenuItems: (items) => set({ menuItems: items }),
       
@@ -98,6 +101,10 @@ export const useStore = create<CafeStore>()(
       
       updateSettings: (newSettings) => set((state) => ({
         settings: { ...state.settings, ...newSettings }
+      })),
+      
+      updateTheme: (newTheme) => set((state) => ({
+        theme: { ...state.theme, ...newTheme }
       })),
     }),
     {

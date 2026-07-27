@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Save, QrCode, Share2, Camera, Globe, AtSign, Image as ImageIcon, X } from 'lucide-react';
+import { Save, QrCode, Share2, Camera, Globe, AtSign, Image as ImageIcon, X, Palette, Type } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import Header from '@/components/Header';
 import { useStore } from '@/lib/store';
+import { FONT_OPTIONS } from '@/lib/types';
 
 function getOrigin() {
   if (typeof window !== 'undefined') return window.location.origin;
@@ -14,9 +15,12 @@ function getOrigin() {
 export default function SettingsPage() {
   const settings = useStore((state) => state.settings);
   const updateSettings = useStore((state) => state.updateSettings);
+  const theme = useStore((state) => state.theme);
+  const updateTheme = useStore((state) => state.updateTheme);
   const [origin] = useState(getOrigin);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'general' | 'theme'>('general');
   
   const [formData, setFormData] = useState({
     name: settings.name,
@@ -28,6 +32,18 @@ export default function SettingsPage() {
     instagram: settings.socialLinks.instagram,
     facebook: settings.socialLinks.facebook,
     twitter: settings.socialLinks.twitter,
+  });
+
+  const [themeData, setThemeData] = useState({
+    primaryColor: theme.primaryColor,
+    secondaryColor: theme.secondaryColor,
+    accentColor: theme.accentColor,
+    backgroundColor: theme.backgroundColor,
+    textColor: theme.textColor,
+    headingFont: theme.headingFont,
+    bodyFont: theme.bodyFont,
+    borderRadius: theme.borderRadius,
+    fontSize: theme.fontSize,
   });
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -106,6 +122,17 @@ export default function SettingsPage() {
         twitter: formData.twitter,
       },
     });
+    updateTheme({
+      primaryColor: themeData.primaryColor,
+      secondaryColor: themeData.secondaryColor,
+      accentColor: themeData.accentColor,
+      backgroundColor: themeData.backgroundColor,
+      textColor: themeData.textColor,
+      headingFont: themeData.headingFont,
+      bodyFont: themeData.bodyFont,
+      borderRadius: themeData.borderRadius,
+      fontSize: themeData.fontSize,
+    });
     alert('Settings saved!');
   };
 
@@ -131,7 +158,30 @@ export default function SettingsPage() {
       <Header title="Settings" showBack />
       
       <main className="max-w-4xl mx-auto px-4 py-6">
-        {/* Logo Upload Section */}
+        {/* Tab Navigation */}
+        <div className="flex gap-2 mb-6 bg-stone-100 p-1 rounded-xl">
+          <button
+            onClick={() => setActiveTab('general')}
+            className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === 'general' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500'
+            }`}
+          >
+            General
+          </button>
+          <button
+            onClick={() => setActiveTab('theme')}
+            className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+              activeTab === 'theme' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500'
+            }`}
+          >
+            <Palette className="w-4 h-4" />
+            Theme
+          </button>
+        </div>
+
+        {activeTab === 'general' ? (
+          <>
+            {/* Logo Upload Section */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-stone-100 mb-6">
           <div className="flex items-center gap-3 mb-4">
             <ImageIcon className="w-5 h-5 text-stone-600" />
@@ -312,6 +362,151 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
+        </>
+        ) : (
+        <>
+        {/* Theme Customization Section */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-stone-100 mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Palette className="w-5 h-5 text-stone-600" />
+            <h2 className="font-semibold text-stone-800">Colors</h2>
+          </div>
+          
+          {/* Color Preview */}
+          <div className="flex gap-2 mb-4 h-16 rounded-xl overflow-hidden border border-stone-200">
+            <div className="flex-1" style={{ backgroundColor: themeData.primaryColor }}></div>
+            <div className="flex-1" style={{ backgroundColor: themeData.secondaryColor }}></div>
+            <div className="flex-1" style={{ backgroundColor: themeData.accentColor }}></div>
+            <div className="flex-1" style={{ backgroundColor: themeData.backgroundColor }}></div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              { key: 'primaryColor' as const, label: 'Primary' },
+              { key: 'secondaryColor' as const, label: 'Secondary' },
+              { key: 'accentColor' as const, label: 'Accent' },
+              { key: 'backgroundColor' as const, label: 'Background' },
+              { key: 'textColor' as const, label: 'Text' },
+            ].map(({ key, label }) => (
+              <div key={key} className="flex items-center gap-3">
+                <label className="relative cursor-pointer">
+                  <input
+                    type="color"
+                    value={themeData[key]}
+                    onChange={(e) => setThemeData({ ...themeData, [key]: e.target.value })}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <div
+                    className="w-10 h-10 rounded-xl border-2 border-stone-200 shadow-inner"
+                    style={{ backgroundColor: themeData[key] }}
+                  />
+                </label>
+                <span className="text-sm text-stone-600">{label}</span>
+                <span className="text-xs text-stone-400 ml-auto font-mono">{themeData[key]}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Font Selection */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-stone-100 mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Type className="w-5 h-5 text-stone-600" />
+            <h2 className="font-semibold text-stone-800">Typography</h2>
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-2">Heading Font</label>
+              <select
+                value={themeData.headingFont}
+                onChange={(e) => setThemeData({ ...themeData, headingFont: e.target.value })}
+                className="w-full px-4 py-2.5 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+              >
+                {FONT_OPTIONS.map((font) => (
+                  <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>
+                    {font.label}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-2 text-lg" style={{ fontFamily: themeData.headingFont }}>
+                The quick brown fox jumps over the lazy dog
+              </p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-2">Body Font</label>
+              <select
+                value={themeData.bodyFont}
+                onChange={(e) => setThemeData({ ...themeData, bodyFont: e.target.value })}
+                className="w-full px-4 py-2.5 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+              >
+                {FONT_OPTIONS.map((font) => (
+                  <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>
+                    {font.label}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-2 text-sm" style={{ fontFamily: themeData.bodyFont }}>
+                The quick brown fox jumps over the lazy dog
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Sliders */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-stone-100 mb-6">
+          <h2 className="font-semibold text-stone-800 mb-4">Size & Shape</h2>
+          
+          <div className="space-y-5">
+            <div>
+              <div className="flex justify-between mb-2">
+                <label className="text-sm font-medium text-stone-700">Corner Roundness</label>
+                <span className="text-sm text-stone-400">{themeData.borderRadius}px</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="32"
+                value={themeData.borderRadius}
+                onChange={(e) => setThemeData({ ...themeData, borderRadius: Number(e.target.value) })}
+                className="w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-orange-500"
+              />
+              <div className="flex justify-between text-xs text-stone-400 mt-1">
+                <span>Square</span>
+                <span>Round</span>
+              </div>
+            </div>
+            
+            <div>
+              <div className="flex justify-between mb-2">
+                <label className="text-sm font-medium text-stone-700">Font Size</label>
+                <span className="text-sm text-stone-400">{themeData.fontSize}px</span>
+              </div>
+              <input
+                type="range"
+                min="12"
+                max="24"
+                value={themeData.fontSize}
+                onChange={(e) => setThemeData({ ...themeData, fontSize: Number(e.target.value) })}
+                className="w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-orange-500"
+              />
+              <div className="flex justify-between text-xs text-stone-400 mt-1">
+                <span>Small</span>
+                <span>Large</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Preview */}
+          <div className="mt-6 p-4 rounded-xl border border-stone-200" style={{ borderRadius: themeData.borderRadius }}>
+            <p className="text-sm" style={{ fontFamily: themeData.bodyFont, fontSize: themeData.fontSize }}>
+              This is how your text will look with the current settings.
+            </p>
+          </div>
+        </div>
+        </>
+        )}
 
         {/* Save Button */}
         <button

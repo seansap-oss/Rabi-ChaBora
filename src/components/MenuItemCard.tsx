@@ -7,10 +7,48 @@ import { useStore } from '@/lib/store';
 
 interface MenuItemCardProps {
   item: MenuItem;
+  compact?: boolean;
 }
 
-export default function MenuItemCard({ item }: MenuItemCardProps) {
+export default function MenuItemCard({ item, compact = false }: MenuItemCardProps) {
   const addToCart = useStore((state) => state.addToCart);
+
+  if (compact) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-stone-100 overflow-hidden hover:shadow-md transition-shadow">
+        <div className="relative aspect-square bg-stone-100">
+          <img
+            src={item.image}
+            alt={item.name}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.src = 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400';
+            }}
+          />
+          {item.isSpecial && (
+            <div className="absolute top-2 left-2 bg-amber-500 text-white px-2 py-0.5 rounded-full text-[10px] font-medium flex items-center gap-1">
+              <Star className="w-2.5 h-2.5 fill-current" />
+              Special
+            </div>
+          )}
+        </div>
+        <div className="p-2.5">
+          <h3 className="font-semibold text-stone-800 text-sm leading-tight truncate">{item.name}</h3>
+          <p className="text-[11px] text-stone-400 truncate mt-0.5">{item.description}</p>
+          <div className="flex items-center justify-between mt-2">
+            <span className="font-bold text-orange-600 text-sm">{formatPrice(item.price)}</span>
+            <button
+              onClick={() => addToCart(item)}
+              className="w-7 h-7 rounded-full bg-stone-900 hover:bg-stone-800 text-white flex items-center justify-center transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-stone-100 overflow-hidden hover:shadow-md transition-shadow">

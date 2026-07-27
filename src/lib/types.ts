@@ -52,6 +52,43 @@ export interface CafeSettings {
   };
 }
 
+export interface ThemeSettings {
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  backgroundColor: string;
+  textColor: string;
+  headingFont: string;
+  bodyFont: string;
+  borderRadius: number;
+  fontSize: number;
+}
+
+export const DEFAULT_THEME: ThemeSettings = {
+  primaryColor: '#f59e0b',
+  secondaryColor: '#1c1917',
+  accentColor: '#ea580c',
+  backgroundColor: '#f5f5f4',
+  textColor: '#1c1917',
+  headingFont: 'system-ui, sans-serif',
+  bodyFont: 'system-ui, sans-serif',
+  borderRadius: 16,
+  fontSize: 16,
+};
+
+export const FONT_OPTIONS = [
+  { label: 'System Default', value: 'system-ui, sans-serif' },
+  { label: 'Inter', value: 'Inter, sans-serif' },
+  { label: 'Playfair Display', value: '"Playfair Display", serif' },
+  { label: 'Poppins', value: 'Poppins, sans-serif' },
+  { label: 'Dancing Script', value: '"Dancing Script", cursive' },
+  { label: 'Pacifico', value: 'Pacifico, cursive' },
+  { label: 'Caveat', value: 'Caveat, cursive' },
+  { label: 'Lora', value: 'Lora, serif' },
+  { label: 'Merriweather', value: 'Merriweather, serif' },
+  { label: 'Nunito', value: 'Nunito, sans-serif' },
+];
+
 export interface SalesData {
   date: string;
   total: number;
