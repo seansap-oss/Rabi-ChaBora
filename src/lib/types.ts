@@ -135,3 +135,47 @@ export const DEFAULT_MENU_ITEMS: MenuItem[] = [
 ];
 
 export const CATEGORIES = ['All', 'Coffee', 'Tea', 'Food', 'Desserts'];
+
+export interface ReceiptSettings {
+  paperSize: '50mm' | '60mm' | '80mm' | 'A4';
+  fontSize: number;
+  lineStyle: 'solid' | 'dashed' | 'dotted';
+  borderStyle: 'none' | 'thin' | 'rounded';
+  padding: 'compact' | 'normal' | 'wide';
+  itemAlign: 'left' | 'center';
+  priceAlign: 'right' | 'center';
+  headerAlign: 'center' | 'left';
+  showLogo: boolean;
+  showDate: boolean;
+  showTime: boolean;
+  showOrderNumber: boolean;
+  showTax: boolean;
+  taxPercent: number;
+  headerText: string;
+  footerText: string;
+  watermarkEnabled: boolean;
+  watermarkOpacity: number;
+  watermarkRotation: number;
+}
+
+export const DEFAULT_RECEIPT_SETTINGS: ReceiptSettings = {
+  paperSize: '80mm',
+  fontSize: 12,
+  lineStyle: 'dashed',
+  borderStyle: 'none',
+  padding: 'normal',
+  itemAlign: 'left',
+  priceAlign: 'right',
+  headerAlign: 'center',
+  showLogo: true,
+  showDate: true,
+  showTime: true,
+  showOrderNumber: true,
+  showTax: true,
+  taxPercent: 5,
+  headerText: 'Thank you for visiting!',
+  footerText: 'Visit us again :)',
+  watermarkEnabled: true,
+  watermarkOpacity: 0.08,
+  watermarkRotation: -30,
+};

@@ -12,6 +12,7 @@ interface LicenseFeatures {
   adminDashboard: boolean;
   menuManagement: boolean;
   reports: boolean;
+  receiptPrinter: boolean;
 }
 
 interface LicenseContextType {
@@ -35,6 +36,7 @@ const FEATURE_PASSWORDS: Record<keyof LicenseFeatures, string> = {
   adminDashboard: 'admin123',
   menuManagement: 'menu123',
   reports: 'reports123',
+  receiptPrinter: 'receipt123',
 };
 
 const FEATURE_HINTS: Record<keyof LicenseFeatures, string> = {
@@ -47,6 +49,7 @@ const FEATURE_HINTS: Record<keyof LicenseFeatures, string> = {
   adminDashboard: 'Included with any paid plan',
   menuManagement: 'Included with any paid plan',
   reports: 'Unlock with Reports license key',
+  receiptPrinter: 'Unlock with Receipt Printer license',
 };
 
 // Base features that are always free
@@ -62,6 +65,7 @@ const DEFAULT_FEATURES: LicenseFeatures = {
   adminDashboard: false,
   menuManagement: false,
   reports: false,
+  receiptPrinter: false,
 };
 
 export function LicenseProvider({ children }: { children: ReactNode }) {

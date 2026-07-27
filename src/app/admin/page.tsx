@@ -13,17 +13,33 @@ import {
   Truck,
   Monitor,
   Shield,
-  QrCode
+  QrCode,
+  Share2,
+  Download,
+  Upload,
+  Trash2,
+  LogOut
 } from 'lucide-react';
 import Header from '@/components/Header';
+import OwnerGate from '@/components/OwnerGate';
 import { useStore } from '@/lib/store';
+import { useOwnerStore } from '@/lib/ownerStore';
 import { formatPrice, calculateSales, getTotalSales } from '@/lib/utils';
 import { Order } from '@/lib/types';
 
-export default function AdminPage() {
+function AdminContent() {
   const localOrders = useStore((state) => state.orders);
+  const settings = useStore((state) => state.settings);
   const [orders, setOrders] = useState<Order[]>(localOrders);
   const [period, setPeriod] = useState<'day' | 'week' | 'month'>('day');
+  const ownerLogout = useOwnerStore((state) => state.logout);
+  const ownerSales = useOwnerStore((state) => state.sales);
+  const addOwnerSale = useOwnerStore((state) => state.addSale);
+  const deleteOwnerSale = useOwnerStore((state) => state.deleteSale);
+  const exportData = useOwnerStore((state) => state.exportData);
+  const importData = useOwnerStore((state) => state.importData);
+  const lastAutoSend = useOwnerStore((state) => state.lastAutoSend);
+  const setLastAutoSend = useOwnerStore((state) => state.setLastAutoSend);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -32,6 +48,26 @@ export default function AdminPage() {
         if (response.ok) {
           const data = await response.json();
           setOrders(data);
+          // Save paid orders to owner store
+          data.forEach((order: Order) => {
+            if (['paid', 'pending', 'preparing', 'ready', 'out_for_delivery', 'completed'].includes(order.status)) {
+              const exists = ownerSales.find(s => s.id === order.id);
+              if (!exists) {
+                addOwnerSale({
+                  id: order.id,
+                  items: order.items.map(i => ({
+                    name: i.menuItem.name,
+                    quantity: i.quantity,
+                    price: i.menuItem.price,
+                  })),
+                  total: order.total,
+                  paymentMethod: order.paymentMethod,
+                  orderType: order.orderType,
+                  createdAt: order.createdAt,
+                });
+              }
+            }
+          });
         }
       } catch {
         setOrders(localOrders);
@@ -39,20 +75,168 @@ export default function AdminPage() {
     };
     
     fetchOrders();
-    const interval = setInterval(fetchOrders, 10000);
+    const interval = setInterval(fetchOrders, 5000);
     return () => clearInterval(interval);
-  }, [localOrders]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Derive sales data directly from orders
+  // Auto-send to WhatsApp at 10 PM
+  useEffect(() => {
+    const checkAutoSend = () => {
+      const now = new Date();
+      const today = now.toISOString().split('T')[0];
+      if (now.getHours() === 22 && lastAutoSend !== today) {
+        const total = ownerSales
+          .filter(s => new Date(s.createdAt).toISOString().split('T')[0] === today)
+          .reduce((sum, s) => sum + s.total, 0);
+        const count = ownerSales
+          .filter(s => new Date(s.createdAt).toISOString().split('T')[0] === today)
+          .length;
+        
+        const text = encodeURIComponent(
+          `📊 ${settings.name} - Daily Sales Report\n` +
+          `📅 ${now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}\n\n` +
+          `💰 Total Sales: ${formatPrice(total)}\n` +
+          `🧾 Total Orders: ${count}\n\n` +
+          `Auto-generated at ${now.toLocaleTimeString('en-IN')}`
+        );
+        window.open(`https://wa.me/?text=${text}`, '_blank');
+        setLastAutoSend(today);
+      }
+    };
+    
+    const interval = setInterval(checkAutoSend, 60000);
+    checkAutoSend();
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ownerSales, lastAutoSend]);
+
   const currentSalesData = calculateSales(orders, period);
   const currentTotals = getTotalSales(orders);
   const pendingPayments = orders.filter(o => o.status === 'pending_payment').length;
+
+  const getShareText = () => {
+    const periodLabel = period === 'day' ? 'Today' : period === 'week' ? 'This Week' : 'This Month';
+    let text = `📊 ${settings.name} - Sales Report\n`;
+    text += `📅 ${periodLabel}\n\n`;
+    text += `💰 Total Sales: ${formatPrice(currentTotals.total)}\n`;
+    text += `🧾 Total Orders: ${currentTotals.orders}\n`;
+    text += `💵 Cash: ${formatPrice(currentTotals.cash)}\n`;
+    text += `📱 UPI/GPay: ${formatPrice(currentTotals.upi + currentTotals.gpay)}\n`;
+    text += `\n🔗 View Menu: ${typeof window !== 'undefined' ? window.location.origin : ''}`;
+    return text;
+  };
+
+  const shareWhatsApp = () => {
+    const text = encodeURIComponent(getShareText());
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+  };
+
+  const downloadReport = () => {
+    const text = getShareText();
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sales-report-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadCSV = () => {
+    const paidStatuses = ['paid', 'pending', 'preparing', 'ready', 'out_for_delivery', 'completed'];
+    const paidOrders = orders.filter(o => paidStatuses.includes(o.status));
+    let csv = 'Date,Order ID,Payment,Items,Total\n';
+    paidOrders.forEach(order => {
+      const date = new Date(order.createdAt).toLocaleString('en-IN');
+      const items = order.items.map(i => `${i.quantity}x ${i.menuItem.name}`).join('; ');
+      csv += `"${date}","${order.id}","${order.paymentMethod}","${items}",${order.total}\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sales-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExport = () => {
+    const data = exportData();
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cafe-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImport = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const json = ev.target?.result as string;
+        if (importData(json)) {
+          alert('Data restored successfully!');
+        } else {
+          alert('Invalid backup file');
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  };
+
+  const handleDeleteSale = (id: string) => {
+    if (confirm('Delete this order record?')) {
+      deleteOwnerSale(id);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-stone-50">
       <Header title="Admin Dashboard" showBack />
       
       <main className="max-w-4xl mx-auto px-4 py-6">
+        {/* Owner Actions Bar */}
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex gap-2">
+            <button
+              onClick={handleExport}
+              className="flex items-center gap-1.5 bg-stone-100 text-stone-600 px-3 py-2 rounded-lg text-xs font-medium hover:bg-stone-200 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Backup
+            </button>
+            <button
+              onClick={handleImport}
+              className="flex items-center gap-1.5 bg-stone-100 text-stone-600 px-3 py-2 rounded-lg text-xs font-medium hover:bg-stone-200 transition-colors"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              Restore
+            </button>
+          </div>
+          <button
+            onClick={ownerLogout}
+            className="flex items-center gap-1.5 text-stone-400 hover:text-red-500 transition-colors text-xs"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            Lock Dashboard
+          </button>
+        </div>
+
         {/* Pending Alerts */}
         {pendingPayments > 0 && (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 flex items-center gap-3">
@@ -168,7 +352,32 @@ export default function AdminPage() {
               ))}
             </div>
           </div>
-          
+
+          {/* Share / Download Buttons */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button
+              onClick={shareWhatsApp}
+              className="flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-green-600 transition-colors"
+            >
+              <Share2 className="w-4 h-4" />
+              WhatsApp
+            </button>
+            <button
+              onClick={downloadReport}
+              className="flex items-center gap-2 bg-stone-100 text-stone-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-200 transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              Text File
+            </button>
+            <button
+              onClick={downloadCSV}
+              className="flex items-center gap-2 bg-stone-100 text-stone-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-200 transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              CSV/Excel
+            </button>
+          </div>
+
           <div className="space-y-3">
             {currentSalesData.slice(period === 'day' ? -1 : period === 'week' ? -7 : -30).reverse().map((day) => (
               <div key={day.date} className="flex justify-between items-center py-2 border-b border-stone-100 last:border-0">
@@ -181,6 +390,54 @@ export default function AdminPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Order Records with Delete */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-stone-100 mb-8">
+          <h2 className="font-semibold text-stone-800 mb-4">Order Records</h2>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {ownerSales.slice(0, 50).map((sale) => (
+              <div key={sale.id} className="flex items-center justify-between py-2 border-b border-stone-100 last:border-0">
+                <div className="min-w-0">
+                  <p className="text-sm text-stone-800 truncate">
+                    {sale.items.map(i => `${i.quantity}x ${i.name}`).join(', ')}
+                  </p>
+                  <p className="text-xs text-stone-400">
+                    {new Date(sale.createdAt).toLocaleString('en-IN')} • {sale.paymentMethod.toUpperCase()}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <span className="font-medium text-stone-800">{formatPrice(sale.total)}</span>
+                  <button
+                    onClick={() => handleDeleteSale(sale.id)}
+                    className="p-1 text-stone-300 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          {ownerSales.length > 50 && (
+            <p className="text-xs text-stone-400 text-center mt-3">Showing 50 of {ownerSales.length} records</p>
+          )}
+        </div>
+
+        {/* Auto-Send Status */}
+        <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100 mb-8">
+          <div className="flex items-center gap-3">
+            <div className="w-10 bg-blue-100 rounded-full flex items-center justify-center">
+              <Share2 className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-blue-800">Auto-Send at 10 PM</p>
+              <p className="text-xs text-blue-600">
+                {lastAutoSend === new Date().toISOString().split('T')[0]
+                  ? '✅ Sent today'
+                  : 'Will auto-send today\'s summary to WhatsApp at 10:00 PM'}
+              </p>
+            </div>
           </div>
         </div>
 
@@ -202,7 +459,7 @@ export default function AdminPage() {
             </div>
             <div>
               <h3 className="font-semibold text-stone-800">Settings</h3>
-              <p className="text-sm text-stone-500">Cafe details & QR code</p>
+              <p className="text-sm text-stone-500">Cafe details & theme</p>
             </div>
           </Link>
           
@@ -228,5 +485,13 @@ export default function AdminPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function AdminPage() {
+  return (
+    <OwnerGate>
+      <AdminContent />
+    </OwnerGate>
   );
 }

@@ -61,6 +61,14 @@ export default function POSPage() {
         oscillator.frequency.setValueAtTime(800, ctx.currentTime);
         oscillator.frequency.setValueAtTime(1200, ctx.currentTime + 0.15);
         oscillator.stop(ctx.currentTime + 0.3);
+        // Voice announcement after beep
+        if ('speechSynthesis' in window) {
+          const utterance = new SpeechSynthesisUtterance('Payment received');
+          utterance.volume = 0.75;
+          utterance.rate = 1.0;
+          utterance.pitch = 1.0;
+          setTimeout(() => window.speechSynthesis.speak(utterance), 350);
+        }
         break;
       case 'order_ready':
         oscillator.frequency.value = 1000;

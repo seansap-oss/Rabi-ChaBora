@@ -33,6 +33,14 @@ export default function KitchenPage() {
     osc.frequency.setValueAtTime(1000, ctx.currentTime + 0.1);
     osc.frequency.setValueAtTime(1200, ctx.currentTime + 0.2);
     osc.stop(ctx.currentTime + 0.3);
+    // Voice announcement
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance('New order received');
+      utterance.volume = 0.75;
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      setTimeout(() => window.speechSynthesis.speak(utterance), 350);
+    }
   };
 
   const fetchOrders = async () => {

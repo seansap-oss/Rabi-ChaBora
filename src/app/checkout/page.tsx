@@ -6,6 +6,7 @@ import { Smartphone, Banknote, Check, QrCode, ArrowRight } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import Header from '@/components/Header';
 import { useStore } from '@/lib/store';
+import { useUserStore } from '@/lib/userStore';
 import { formatPrice, generateOrderId } from '@/lib/utils';
 import { Order } from '@/lib/types';
 
@@ -15,6 +16,9 @@ export default function CheckoutPage() {
   const settings = useStore((state) => state.settings);
   const addOrder = useStore((state) => state.addOrder);
   const clearCart = useStore((state) => state.clearCart);
+  const isLoggedIn = useUserStore((state) => state.session?.loggedIn);
+  const username = useUserStore((state) => state.session?.username);
+  const addUserOrder = useUserStore((state) => state.addUserOrder);
   
   const [paymentMethod, setPaymentMethod] = useState<'upi' | 'gpay' | 'cash'>('upi');
   const [orderType, setOrderType] = useState<'dine_in' | 'takeaway' | 'delivery'>('dine_in');
@@ -45,6 +49,21 @@ export default function CheckoutPage() {
     };
     
     addOrder(order);
+    
+    // Save to user profile if logged in
+    if (isLoggedIn && username) {
+      addUserOrder(username, {
+        id: order.id,
+        items: cartItems.map(i => ({
+          name: i.menuItem.name,
+          quantity: i.quantity,
+          price: i.menuItem.price,
+        })),
+        total,
+        paymentMethod,
+        createdAt,
+      });
+    }
     
     // Post to API
     try {

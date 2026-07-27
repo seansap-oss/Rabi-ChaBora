@@ -31,6 +31,9 @@ export const calculateSales = (orders: Order[], period: 'day' | 'week' | 'month'
   else if (period === 'week') daysToCheck = 7;
   else daysToCheck = 30;
   
+  // Count all orders that have been paid (paid or beyond)
+  const paidStatuses = ['paid', 'pending', 'preparing', 'ready', 'out_for_delivery', 'completed'];
+  
   for (let i = 0; i < daysToCheck; i++) {
     const date = new Date(now);
     date.setDate(date.getDate() - i);
@@ -38,7 +41,7 @@ export const calculateSales = (orders: Order[], period: 'day' | 'week' | 'month'
     
     const dayOrders = orders.filter((order) => {
       const orderDate = new Date(order.createdAt).toISOString().split('T')[0];
-      return orderDate === dateStr && order.status === 'completed';
+      return orderDate === dateStr && paidStatuses.includes(order.status);
     });
     
     const total = dayOrders.reduce((sum, order) => sum + order.total, 0);
@@ -60,12 +63,13 @@ export const calculateSales = (orders: Order[], period: 'day' | 'week' | 'month'
 };
 
 export const getTotalSales = (orders: Order[]) => {
-  const completedOrders = orders.filter(o => o.status === 'completed');
+  const paidStatuses = ['paid', 'pending', 'preparing', 'ready', 'out_for_delivery', 'completed'];
+  const paidOrders = orders.filter(o => paidStatuses.includes(o.status));
   return {
-    total: completedOrders.reduce((sum, o) => sum + o.total, 0),
-    upi: completedOrders.filter(o => o.paymentMethod === 'upi').reduce((sum, o) => sum + o.total, 0),
-    gpay: completedOrders.filter(o => o.paymentMethod === 'gpay').reduce((sum, o) => sum + o.total, 0),
-    cash: completedOrders.filter(o => o.paymentMethod === 'cash').reduce((sum, o) => sum + o.total, 0),
-    orders: completedOrders.length,
+    total: paidOrders.reduce((sum, o) => sum + o.total, 0),
+    upi: paidOrders.filter(o => o.paymentMethod === 'upi').reduce((sum, o) => sum + o.total, 0),
+    gpay: paidOrders.filter(o => o.paymentMethod === 'gpay').reduce((sum, o) => sum + o.total, 0),
+    cash: paidOrders.filter(o => o.paymentMethod === 'cash').reduce((sum, o) => sum + o.total, 0),
+    orders: paidOrders.length,
   };
 };

@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Save, QrCode, Share2, Camera, Globe, AtSign, Image as ImageIcon, X, Palette, Type } from 'lucide-react';
+import { Save, QrCode, Share2, Camera, Globe, AtSign, Image as ImageIcon, X, Palette, Type, Printer, Lock } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import Header from '@/components/Header';
+import ReceiptDesigner from '@/components/ReceiptDesigner';
 import { useStore } from '@/lib/store';
+import { useLicense } from '@/lib/license';
 import { FONT_OPTIONS } from '@/lib/types';
 
 function getOrigin() {
@@ -20,7 +22,10 @@ export default function SettingsPage() {
   const [origin] = useState(getOrigin);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'general' | 'theme'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'theme' | 'receipt'>('general');
+  const { isUnlocked, unlockFeature, getPasswordHint } = useLicense();
+  const [licenseInput, setLicenseInput] = useState('');
+  const [licenseError, setLicenseError] = useState('');
   
   const [formData, setFormData] = useState({
     name: settings.name,
@@ -177,10 +182,18 @@ export default function SettingsPage() {
             <Palette className="w-4 h-4" />
             Theme
           </button>
+          <button
+            onClick={() => setActiveTab('receipt')}
+            className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+              activeTab === 'receipt' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500'
+            }`}
+          >
+            <Printer className="w-4 h-4" />
+            Receipt
+          </button>
         </div>
 
-        {activeTab === 'general' ? (
-          <>
+        {activeTab === 'general' && (<>
             {/* Logo Upload Section */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-stone-100 mb-6">
           <div className="flex items-center gap-3 mb-4">
@@ -363,8 +376,8 @@ export default function SettingsPage() {
           </div>
         </div>
         </>
-        ) : (
-        <>
+        )}
+        {activeTab === 'theme' && (<>
         {/* Theme Customization Section */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-stone-100 mb-6">
           <div className="flex items-center gap-3 mb-4">
@@ -505,6 +518,52 @@ export default function SettingsPage() {
             </p>
           </div>
         </div>
+        </>
+        )}
+        {activeTab === 'receipt' && (<>
+        {/* Receipt Designer - License Gated */}
+        {isUnlocked('receiptPrinter') ? (
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-stone-100 mb-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Printer className="w-5 h-5 text-stone-600" />
+              <h2 className="font-semibold text-stone-800">Receipt Designer</h2>
+            </div>
+            <ReceiptDesigner />
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-stone-100 mb-6">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                <Lock className="w-8 h-8 text-amber-500" />
+              </div>
+              <h3 className="font-semibold text-stone-800 mb-1">Receipt Printer</h3>
+              <p className="text-sm text-stone-500 mb-4">{getPasswordHint('receiptPrinter')}</p>
+              <div className="flex gap-2 max-w-xs mx-auto">
+                <input
+                  type="password"
+                  value={licenseInput}
+                  onChange={(e) => setLicenseInput(e.target.value)}
+                  placeholder="Enter license key"
+                  className="flex-1 px-4 py-2 border border-stone-200 rounded-xl text-sm"
+                />
+                <button
+                  onClick={() => {
+                    setLicenseError('');
+                    if (unlockFeature('receiptPrinter', licenseInput)) {
+                      setLicenseInput('');
+                    } else {
+                      setLicenseError('Invalid license key');
+                    }
+                  }}
+                  className="bg-amber-500 text-white px-4 py-2 rounded-xl text-sm font-medium"
+                >
+                  Unlock
+                </button>
+              </div>
+              {licenseError && <p className="text-red-500 text-xs mt-2">{licenseError}</p>}
+            </div>
+          </div>
+        )}
         </>
         )}
 

@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { CartItem, MenuItem, CafeSettings, ThemeSettings, Order, DEFAULT_CAFE_SETTINGS, DEFAULT_THEME, DEFAULT_MENU_ITEMS } from './types';
+import { CartItem, MenuItem, CafeSettings, ThemeSettings, ReceiptSettings, Order, DEFAULT_CAFE_SETTINGS, DEFAULT_THEME, DEFAULT_RECEIPT_SETTINGS, DEFAULT_MENU_ITEMS } from './types';
 
 interface CafeStore {
   menuItems: MenuItem[];
@@ -10,6 +10,7 @@ interface CafeStore {
   orders: Order[];
   settings: CafeSettings;
   theme: ThemeSettings;
+  receiptSettings: ReceiptSettings;
   
   setMenuItems: (items: MenuItem[]) => void;
   addMenuItem: (item: MenuItem) => void;
@@ -27,6 +28,7 @@ interface CafeStore {
   
   updateSettings: (settings: Partial<CafeSettings>) => void;
   updateTheme: (theme: Partial<ThemeSettings>) => void;
+  updateReceiptSettings: (settings: Partial<ReceiptSettings>) => void;
 }
 
 export const useStore = create<CafeStore>()(
@@ -37,6 +39,7 @@ export const useStore = create<CafeStore>()(
       orders: [],
       settings: DEFAULT_CAFE_SETTINGS,
       theme: DEFAULT_THEME,
+      receiptSettings: DEFAULT_RECEIPT_SETTINGS,
       
       setMenuItems: (items) => set({ menuItems: items }),
       
@@ -105,6 +108,10 @@ export const useStore = create<CafeStore>()(
       
       updateTheme: (newTheme) => set((state) => ({
         theme: { ...state.theme, ...newTheme }
+      })),
+      
+      updateReceiptSettings: (newReceipt) => set((state) => ({
+        receiptSettings: { ...state.receiptSettings, ...newReceipt }
       })),
     }),
     {

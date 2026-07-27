@@ -28,6 +28,14 @@ export default function DeliveryPage() {
     osc.type = 'sine';
     osc.start();
     osc.stop(ctx.currentTime + 0.3);
+    // Voice announcement
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance('New delivery order');
+      utterance.volume = 0.75;
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      setTimeout(() => window.speechSynthesis.speak(utterance), 350);
+    }
   };
 
   useEffect(() => {
