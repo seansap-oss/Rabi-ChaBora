@@ -490,17 +490,18 @@ function AdminContent() {
           </div>
         </div>
 
-        {/* Sales Report */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-stone-100 mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="font-semibold text-stone-800">Sales Report</h2>
+        {/* Enhanced Sales Dashboard */}
+        <div className="mb-8">
+          {/* Period Selector */}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-stone-800 text-lg">Sales Dashboard</h2>
             <div className="flex gap-2">
               {(['day', 'week', 'month'] as const).map(p => (
                 <button
                   key={p}
                   onClick={() => setPeriod(p)}
-                  className={`px-3 py-1 text-sm rounded-lg transition-colors capitalize ${
-                    period === p ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-600'
+                  className={`px-4 py-1.5 text-sm rounded-xl font-medium transition-all ${
+                    period === p ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/20' : 'bg-white text-stone-600 border border-stone-200 hover:border-stone-300'
                   }`}
                 >
                   {p === 'day' ? 'Today' : p === 'week' ? 'This Week' : 'This Month'}
@@ -509,31 +510,302 @@ function AdminContent() {
             </div>
           </div>
 
-          {/* Share / Download Buttons */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            <button
-              onClick={shareWhatsApp}
-              className="flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-green-600 transition-colors"
-            >
-              <Share2 className="w-4 h-4" />
-              WhatsApp
-            </button>
-            <button
-              onClick={downloadReport}
-              className="flex items-center gap-2 bg-stone-100 text-stone-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-200 transition-colors"
-            >
-              <Download className="w-4 h-4" />
-              Text File
-            </button>
-            <button
-              onClick={downloadCSV}
-              className="flex items-center gap-2 bg-stone-100 text-stone-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-200 transition-colors"
-            >
-              <Download className="w-4 h-4" />
-              CSV/Excel
-            </button>
+          {/* Live Stats Row */}
+          {(() => {
+            const periodOrders = period === 'day'
+              ? orders.filter(o => new Date(o.createdAt).toDateString() === new Date().toDateString())
+              : period === 'week'
+              ? orders.filter(o => { const d = new Date(o.createdAt); const now = new Date(); return (now.getTime() - d.getTime()) < 7 * 86400000; })
+              : orders.filter(o => { const d = new Date(o.createdAt); const now = new Date(); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); });
+            const totalRevenue = periodOrders.reduce((s, o) => s + o.total, 0);
+            const avgOrder = periodOrders.length > 0 ? totalRevenue / periodOrders.length : 0;
+            const cashOrders = periodOrders.filter(o => o.paymentMethod === 'cash');
+            const digitalOrders = periodOrders.filter(o => o.paymentMethod !== 'cash');
+
+            return (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                <div className="bg-gradient-to-br from-orange-500 to-amber-500 rounded-2xl p-4 text-white shadow-lg shadow-orange-500/20">
+                  <p className="text-orange-100 text-xs font-medium">Total Revenue</p>
+                  <p className="text-2xl font-bold mt-1">{formatPrice(totalRevenue)}</p>
+                  <p className="text-orange-200 text-xs mt-1">{periodOrders.length} orders</p>
+                </div>
+                <div className="bg-gradient-to-br from-blue-500 to-indigo-500 rounded-2xl p-4 text-white shadow-lg shadow-blue-500/20">
+                  <p className="text-blue-100 text-xs font-medium">Avg Order</p>
+                  <p className="text-2xl font-bold mt-1">{formatPrice(avgOrder)}</p>
+                  <p className="text-blue-200 text-xs mt-1">per transaction</p>
+                </div>
+                <div className="bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl p-4 text-white shadow-lg shadow-green-500/20">
+                  <p className="text-green-100 text-xs font-medium">Digital Pay</p>
+                  <p className="text-2xl font-bold mt-1">{formatPrice(digitalOrders.reduce((s, o) => s + o.total, 0))}</p>
+                  <p className="text-green-200 text-xs mt-1">{digitalOrders.length} orders</p>
+                </div>
+                <div className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl p-4 text-white shadow-lg shadow-amber-500/20">
+                  <p className="text-amber-100 text-xs font-medium">Cash Pay</p>
+                  <p className="text-2xl font-bold mt-1">{formatPrice(cashOrders.reduce((s, o) => s + o.total, 0))}</p>
+                  <p className="text-amber-200 text-xs mt-1">{cashOrders.length} orders</p>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Charts Row: Pie + Bar */}
+          <div className="grid md:grid-cols-2 gap-4 mb-6">
+            {/* Pie Chart — Category Breakdown */}
+            {(() => {
+              const categoryColors: Record<string, string> = {
+                Coffee: '#f97316',
+                Tea: '#22c55e',
+                Food: '#3b82f6',
+                Desserts: '#a855f7',
+              };
+              const categoryCounts: Record<string, number> = {};
+              orders.forEach(o => {
+                o.items.forEach(item => {
+                  const cat = item.menuItem.category || 'Other';
+                  categoryCounts[cat] = (categoryCounts[cat] || 0) + item.quantity;
+                });
+              });
+              const cats = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]);
+              const total = cats.reduce((s, [, v]) => s + v, 0);
+
+              // Build SVG pie
+              let cumulative = 0;
+              const slices = cats.map(([name, value]) => {
+                const pct = total > 0 ? value / total : 0;
+                const start = cumulative;
+                cumulative += pct;
+                return { name, value, pct, start, color: categoryColors[name] || '#94a3b8' };
+              });
+
+              const polarToCartesian = (cx: number, cy: number, r: number, angle: number) => ({
+                x: cx + r * Math.cos((angle - 90) * Math.PI / 180),
+                y: cy + r * Math.sin((angle - 90) * Math.PI / 180),
+              });
+
+              const describeArc = (cx: number, cy: number, r: number, startPct: number, endPct: number) => {
+                const startAngle = startPct * 360;
+                const endAngle = endPct * 360;
+                const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+                const s = polarToCartesian(cx, cy, r, startAngle);
+                const e = polarToCartesian(cx, cy, r, endAngle);
+                return `M ${cx} ${cy} L ${s.x} ${s.y} A ${r} ${r} 0 ${largeArc} 1 ${e.x} ${e.y} Z`;
+              };
+
+              return (
+                <div className="bg-white rounded-2xl p-5 shadow-sm border border-stone-100">
+                  <h3 className="font-semibold text-stone-800 mb-4">What&apos;s Selling</h3>
+                  <div className="flex items-center gap-6">
+                    {/* Pie SVG */}
+                    <div className="flex-shrink-0">
+                      <svg width="160" height="160" viewBox="0 0 160 160">
+                        {slices.length === 0 ? (
+                          <circle cx="80" cy="80" r="70" fill="#f5f5f4" />
+                        ) : (
+                          slices.map((slice, i) => (
+                            <path
+                              key={i}
+                              d={describeArc(80, 80, 70, slice.start, slice.start + slice.pct)}
+                              fill={slice.color}
+                              stroke="white"
+                              strokeWidth="2"
+                            />
+                          ))
+                        )}
+                        <circle cx="80" cy="80" r="35" fill="white" />
+                        <text x="80" y="76" textAnchor="middle" className="text-lg font-bold fill-stone-800">{total}</text>
+                        <text x="80" y="92" textAnchor="middle" className="text-xs fill-stone-400">items sold</text>
+                      </svg>
+                    </div>
+                    {/* Legend */}
+                    <div className="flex-1 space-y-2.5">
+                      {slices.map((slice, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: slice.color }} />
+                          <span className="text-sm text-stone-600 flex-1">{slice.name}</span>
+                          <span className="text-sm font-bold text-stone-800">{slice.value}</span>
+                          <span className="text-xs text-stone-400 w-10 text-right">{(slice.pct * 100).toFixed(0)}%</span>
+                        </div>
+                      ))}
+                      {cats.length === 0 && (
+                        <p className="text-sm text-stone-400">No sales data yet</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Bar Chart — Daily Revenue */}
+            {(() => {
+              const days = period === 'day' ? 1 : period === 'week' ? 7 : 30;
+              const dailyData: { label: string; total: number; orders: number }[] = [];
+              for (let i = days - 1; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const dateStr = d.toISOString().split('T')[0];
+                const dayOrders = orders.filter(o => new Date(o.createdAt).toISOString().split('T')[0] === dateStr);
+                const dayTotal = dayOrders.reduce((s, o) => s + o.total, 0);
+                const label = days === 1
+                  ? d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+                  : d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric' });
+                dailyData.push({ label, total: dayTotal, orders: dayOrders.length });
+              }
+              const maxTotal = Math.max(...dailyData.map(d => d.total), 1);
+
+              return (
+                <div className="bg-white rounded-2xl p-5 shadow-sm border border-stone-100">
+                  <h3 className="font-semibold text-stone-800 mb-4">Revenue Trend</h3>
+                  <div className="flex items-end gap-1.5 h-40">
+                    {dailyData.map((d, i) => {
+                      const height = maxTotal > 0 ? (d.total / maxTotal) * 100 : 0;
+                      return (
+                        <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                          <span className="text-[9px] text-stone-400 font-medium">{d.total > 0 ? formatPrice(d.total) : ''}</span>
+                          <div className="w-full relative group">
+                            <div
+                              className="w-full rounded-t-md transition-all duration-500 group-hover:opacity-80"
+                              style={{
+                                height: `${Math.max(height, 2)}%`,
+                                background: d.total > 0
+                                  ? 'linear-gradient(to top, #f97316, #fbbf24)'
+                                  : '#e5e7eb',
+                              }}
+                            />
+                          </div>
+                          {days <= 7 && (
+                            <span className="text-[8px] text-stone-400 truncate w-full text-center">{d.label}</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {days > 7 && (
+                    <div className="flex justify-between mt-2">
+                      <span className="text-[9px] text-stone-400">{dailyData[0]?.label}</span>
+                      <span className="text-[9px] text-stone-400">{dailyData[dailyData.length - 1]?.label}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
+          {/* Top Selling Items + Share/Download */}
+          <div className="grid md:grid-cols-2 gap-4 mb-6">
+            {/* Top Items */}
+            {(() => {
+              const itemCounts: Record<string, { name: string; count: number; total: number; category: string }> = {};
+              orders.forEach(o => {
+                o.items.forEach(item => {
+                  const key = item.menuItem.id;
+                  if (!itemCounts[key]) {
+                    itemCounts[key] = { name: item.menuItem.name, count: 0, total: 0, category: item.menuItem.category };
+                  }
+                  itemCounts[key].count += item.quantity;
+                  itemCounts[key].total += item.menuItem.price * item.quantity;
+                });
+              });
+              const topItems = Object.values(itemCounts).sort((a, b) => b.count - a.count).slice(0, 5);
+              const maxCount = topItems[0]?.count || 1;
+
+              return (
+                <div className="bg-white rounded-2xl p-5 shadow-sm border border-stone-100">
+                  <h3 className="font-semibold text-stone-800 mb-4">Top Sellers</h3>
+                  <div className="space-y-3">
+                    {topItems.map((item, i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <span className="w-6 h-6 rounded-full bg-gradient-to-br from-orange-400 to-amber-500 text-white text-xs font-bold flex items-center justify-center shadow-sm">
+                          {i + 1}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-medium text-stone-800 truncate">{item.name}</span>
+                            <span className="text-xs text-stone-400 ml-2">{item.count} sold</span>
+                          </div>
+                          <div className="w-full bg-stone-100 rounded-full h-1.5">
+                            <div
+                              className="bg-gradient-to-r from-orange-400 to-amber-500 h-1.5 rounded-full transition-all duration-700"
+                              style={{ width: `${(item.count / maxCount) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                        <span className="text-sm font-bold text-stone-800 ml-2">{formatPrice(item.total)}</span>
+                      </div>
+                    ))}
+                    {topItems.length === 0 && (
+                      <p className="text-sm text-stone-400 text-center py-4">No items sold yet</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Quick Actions + Summary */}
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-stone-100">
+              <h3 className="font-semibold text-stone-800 mb-4">Quick Actions</h3>
+              <div className="space-y-3">
+                <button
+                  onClick={shareWhatsApp}
+                  className="w-full flex items-center gap-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-3 rounded-xl font-medium hover:from-green-600 hover:to-emerald-600 transition-all shadow-md shadow-green-500/20"
+                >
+                  <Share2 className="w-4 h-4" />
+                  Send Report via WhatsApp
+                </button>
+                <button
+                  onClick={downloadReport}
+                  className="w-full flex items-center gap-3 bg-stone-100 text-stone-700 px-4 py-3 rounded-xl font-medium hover:bg-stone-200 transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  Download Text Report
+                </button>
+                <button
+                  onClick={downloadCSV}
+                  className="w-full flex items-center gap-3 bg-stone-100 text-stone-700 px-4 py-3 rounded-xl font-medium hover:bg-stone-200 transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  Export CSV / Excel
+                </button>
+              </div>
+
+              {/* Today's Summary Card */}
+              {(() => {
+                const todayOrders = orders.filter(o => new Date(o.createdAt).toDateString() === new Date().toDateString());
+                const todayTotal = todayOrders.reduce((s, o) => s + o.total, 0);
+                return (
+                  <div className="mt-4 bg-gradient-to-br from-stone-800 to-stone-900 rounded-xl p-4 text-white">
+                    <p className="text-stone-400 text-xs font-medium">Today&apos;s Summary</p>
+                    <div className="flex items-end justify-between mt-2">
+                      <div>
+                        <p className="text-3xl font-bold">{formatPrice(todayTotal)}</p>
+                        <p className="text-stone-400 text-xs mt-1">{todayOrders.length} orders today</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-stone-400">Best hour</p>
+                        <p className="text-sm font-medium">
+                          {(() => {
+                            const hourCounts: Record<number, number> = {};
+                            todayOrders.forEach(o => {
+                              const h = new Date(o.createdAt).getHours();
+                              hourCounts[h] = (hourCounts[h] || 0) + 1;
+                            });
+                            const best = Object.entries(hourCounts).sort((a, b) => b[1] - a[1])[0];
+                            return best ? `${best[0]}:00` : '--';
+                          })()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+
+        {/* Sales Report (raw list) */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-stone-100 mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="font-semibold text-stone-800">Daily Breakdown</h2>
+          </div>
           <div className="space-y-3">
             {currentSalesData.slice(period === 'day' ? -1 : period === 'week' ? -7 : -30).reverse().map((day) => (
               <div key={day.date} className="flex justify-between items-center py-2 border-b border-stone-100 last:border-0">
