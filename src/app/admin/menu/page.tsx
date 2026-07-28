@@ -15,7 +15,7 @@ import {
   Monitor
 } from 'lucide-react';
 import Header from '@/components/Header';
-import { useStore } from '@/lib/store';
+import { useStore, syncMenuToAPI } from '@/lib/store';
 import { formatPrice } from '@/lib/utils';
 import { MenuItem, CATEGORIES } from '@/lib/types';
 
@@ -155,12 +155,15 @@ export default function MenuManagementPage() {
     
     if (editingItem) {
       updateMenuItem(editingItem.id, itemData);
+      syncMenuToAPI('update', undefined, editingItem.id, itemData);
     } else {
-      addMenuItem({
+      const newItem = {
         id: Date.now().toString(),
         ...itemData,
         createdAt: Date.now(),
-      });
+      };
+      addMenuItem(newItem);
+      syncMenuToAPI('add', newItem);
     }
     
     setIsModalOpen(false);
@@ -169,6 +172,7 @@ export default function MenuManagementPage() {
   const handleDelete = (id: string) => {
     if (confirm('Are you sure you want to delete this item?')) {
       deleteMenuItem(id);
+      syncMenuToAPI('delete', undefined, id);
     }
   };
 
@@ -228,7 +232,7 @@ export default function MenuManagementPage() {
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <button
-                          onClick={() => updateMenuItem(item.id, { isSpecial: !item.isSpecial })}
+                          onClick={() => { updateMenuItem(item.id, { isSpecial: !item.isSpecial }); syncMenuToAPI('update', undefined, item.id, { isSpecial: !item.isSpecial }); }}
                           title={item.isSpecial ? 'Remove from Menu Board' : 'Add to Menu Board'}
                           className={`p-2 rounded-lg transition-colors ${
                             item.isSpecial 
@@ -239,7 +243,7 @@ export default function MenuManagementPage() {
                           {item.isSpecial ? <Monitor className="w-4 h-4" /> : <Star className="w-4 h-4" />}
                         </button>
                         <button
-                          onClick={() => updateMenuItem(item.id, { available: !item.available })}
+                          onClick={() => { updateMenuItem(item.id, { available: !item.available }); syncMenuToAPI('update', undefined, item.id, { available: !item.available }); }}
                           className={`p-2 rounded-lg transition-colors ${
                             item.available 
                               ? 'bg-green-100 text-green-600 hover:bg-green-200'

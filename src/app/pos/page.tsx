@@ -29,7 +29,7 @@ import {
 import { Order, OrderDiscount, OrderStatus, MenuItem } from '@/lib/types';
 import { formatPrice, formatDate } from '@/lib/utils';
 import { useWhatsAppStore, sendWhatsAppMessage, formatOrderMessage } from '@/lib/whatsappStore';
-import { useStore } from '@/lib/store';
+import { useStore, fetchMenuFromAPI } from '@/lib/store';
 
 type CartItem = {
   menuItem: MenuItem;
@@ -46,6 +46,18 @@ export default function POSPage() {
   const waSettings = useWhatsAppStore((state) => state.settings);
   const cafeSettings = useStore((state) => state.settings);
   const menuItems = useStore((state) => state.menuItems);
+  const setMenuItems = useStore((state) => state.setMenuItems);
+
+  // Sync menu from API
+  useEffect(() => {
+    const syncMenu = async () => {
+      const apiMenu = await fetchMenuFromAPI();
+      if (apiMenu) setMenuItems(apiMenu);
+    };
+    syncMenu();
+    const interval = setInterval(syncMenu, 15000);
+    return () => clearInterval(interval);
+  }, [setMenuItems]);
 
   // Cart state
   const [cart, setCart] = useState<CartItem[]>([]);

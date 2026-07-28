@@ -5,7 +5,7 @@ import { LayoutGrid, Grid2x2, Rows3, Coffee, List } from 'lucide-react';
 import Header from '@/components/Header';
 import MenuItemCard from '@/components/MenuItemCard';
 import CategoryTabs from '@/components/CategoryTabs';
-import { useStore } from '@/lib/store';
+import { useStore, fetchMenuFromAPI } from '@/lib/store';
 import { CATEGORIES } from '@/lib/types';
 
 export default function HomePage() {
@@ -13,9 +13,21 @@ export default function HomePage() {
   const [viewMode, setViewMode] = useState<'list' | 'grid' | 'compact'>('compact');
   const [showAnimation, setShowAnimation] = useState(true);
   const menuItems = useStore((state) => state.menuItems);
+  const setMenuItems = useStore((state) => state.setMenuItems);
   const settings = useStore((state) => state.settings);
   const theme = useStore((state) => state.theme);
   const mainRef = useRef<HTMLDivElement>(null);
+
+  // Fetch menu from API to stay in sync across devices
+  useEffect(() => {
+    const syncMenu = async () => {
+      const apiMenu = await fetchMenuFromAPI();
+      if (apiMenu) setMenuItems(apiMenu);
+    };
+    syncMenu();
+    const interval = setInterval(syncMenu, 15000);
+    return () => clearInterval(interval);
+  }, [setMenuItems]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {

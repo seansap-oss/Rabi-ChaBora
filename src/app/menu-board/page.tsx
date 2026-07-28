@@ -1,15 +1,27 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore, fetchMenuFromAPI } from '@/lib/store';
 import { MenuItem } from '@/lib/types';
 import { formatPrice } from '@/lib/utils';
 
 export default function MenuBoardPage() {
   const menuItems = useStore((state) => state.menuItems);
+  const setMenuItems = useStore((state) => state.setMenuItems);
   const settings = useStore((state) => state.settings);
   const [currentTime, setCurrentTime] = useState('');
   const [currentSlide, setCurrentSlide] = useState(0);
+
+  // Sync menu from API
+  useEffect(() => {
+    const syncMenu = async () => {
+      const apiMenu = await fetchMenuFromAPI();
+      if (apiMenu) setMenuItems(apiMenu);
+    };
+    syncMenu();
+    const interval = setInterval(syncMenu, 15000);
+    return () => clearInterval(interval);
+  }, [setMenuItems]);
 
   useEffect(() => {
     const updateTime = () => {

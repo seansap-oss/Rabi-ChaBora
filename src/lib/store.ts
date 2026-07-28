@@ -134,3 +134,23 @@ export const useStore = create<CafeStore>()(
     }
   )
 );
+
+// API sync helpers — call these alongside store updates to sync across devices
+
+export async function fetchMenuFromAPI(): Promise<MenuItem[] | null> {
+  try {
+    const res = await fetch('/api/menu');
+    if (res.ok) return await res.json();
+  } catch {}
+  return null;
+}
+
+export async function syncMenuToAPI(action: 'add' | 'update' | 'delete' | 'replace', item?: MenuItem | MenuItem[], id?: string, updates?: Partial<MenuItem>) {
+  try {
+    await fetch('/api/menu', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, item, id, updates }),
+    });
+  } catch {}
+}
