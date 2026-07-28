@@ -56,25 +56,31 @@ function AdminContent() {
     setUpiInput(settings.upiId);
   }, [settings.upiId]);
 
-  // Back button protection
+  // Back button protection — robust approach
   useEffect(() => {
+    // Push a state so back button triggers popstate instead of leaving
+    window.history.pushState(null, '', window.location.href);
+    window.history.pushState(null, '', window.location.href);
+
+    const handlePopState = (e: PopStateEvent) => {
+      const leave = window.confirm('Leave admin dashboard? You\'ll need to enter your password again.');
+      if (leave) {
+        // Allow the back navigation
+        window.history.back();
+      } else {
+        // Push state again to stay on this page
+        window.history.pushState(null, '', window.location.href);
+      }
+    };
+
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = '';
     };
-    
-    const handlePopState = () => {
-      if (window.confirm('Are you sure you want to leave the admin dashboard?')) {
-        window.history.back();
-      } else {
-        window.history.pushState(null, '', window.location.href);
-      }
-    };
-    
-    window.history.pushState(null, '', window.location.href);
+
     window.addEventListener('popstate', handlePopState);
     window.addEventListener('beforeunload', handleBeforeUnload);
-    
+
     return () => {
       window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('beforeunload', handleBeforeUnload);
