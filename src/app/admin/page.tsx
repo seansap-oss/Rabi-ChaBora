@@ -48,8 +48,13 @@ function AdminContent() {
   const waSettings = useWhatsAppStore((state) => state.settings);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [qrPreview, setQrPreview] = useState('');
-  const [upiInput, setUpiInput] = useState('');
+  const [upiInput, setUpiInput] = useState(settings.upiId);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
+
+  // Sync upiInput when settings load
+  useEffect(() => {
+    setUpiInput(settings.upiId);
+  }, [settings.upiId]);
 
   // Back button protection
   useEffect(() => {
@@ -433,10 +438,17 @@ function AdminContent() {
               <label className="block text-sm font-medium text-stone-700 mb-2">UPI Address (VPA)</label>
               <input
                 type="text"
-                value={settings.upiId}
+                value={upiInput}
                 onChange={(e) => {
                   setUpiInput(e.target.value);
                   setShowSaveConfirm(false);
+                }}
+                onBlur={() => {
+                  if (upiInput && upiInput !== settings.upiId) {
+                    updateSettings({ upiId: upiInput });
+                    setShowSaveConfirm(true);
+                    setTimeout(() => setShowSaveConfirm(false), 2000);
+                  }
                 }}
                 placeholder="yourname@upi"
                 className="w-full px-4 py-3 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 mb-4"
@@ -454,6 +466,13 @@ function AdminContent() {
                   {showSaveConfirm ? <Check className="w-4 h-4" /> : <QrCode className="w-4 h-4" />}
                   {showSaveConfirm ? 'Saved!' : 'Save UPI Address'}
                 </button>
+              )}
+
+              {showSaveConfirm && upiInput === settings.upiId && (
+                <div className="w-full bg-green-50 text-green-700 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 mb-4 border border-green-200">
+                  <Check className="w-4 h-4" />
+                  Saved!
+                </div>
               )}
 
               <div className="bg-stone-50 rounded-xl p-4">

@@ -54,13 +54,13 @@ export const useUserStore = create<UserStore>()(
       signUp: (username, password) => {
         const state = get();
         if (state.users.find(u => u.username.toLowerCase() === username.toLowerCase())) {
-          return { success: false, error: 'Username already taken' };
+          return { success: false, error: 'Name already taken — try logging in' };
         }
-        if (username.length < 2) return { success: false, error: 'Username too short' };
-        if (password.length < 4) return { success: false, error: 'Password too short (min 4)' };
+        if (username.trim().length < 4) return { success: false, error: 'Name must be at least 4 letters' };
+        if (!/^\d{4}$/.test(password)) return { success: false, error: 'PIN must be 4 digits' };
         
         const newUser: UserProfile = {
-          username: username.toLowerCase(),
+          username: username.trim().toLowerCase(),
           passwordHash: hashPassword(password),
           createdAt: Date.now(),
         };

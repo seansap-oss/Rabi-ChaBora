@@ -1,28 +1,58 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LogIn, Eye, EyeOff } from 'lucide-react';
+import { LogIn } from 'lucide-react';
 import Header from '@/components/Header';
 import { useUserStore } from '@/lib/userStore';
 
 export default function LoginPage() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [name, setName] = useState('');
+  const [pin, setPin] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const signUp = useUserStore((state) => state.signUp);
   const login = useUserStore((state) => state.login);
+  const session = useUserStore((state) => state.session);
   const router = useRouter();
 
-  const handleLogin = () => {
+  // If already logged in, go to profile
+  if (session?.loggedIn) {
+    router.replace('/profile');
+    return null;
+  }
+
+  const handleSubmit = () => {
     setError('');
-    const result = login(username, password);
-    if (result.success) {
+    setLoading(true);
+
+    if (name.trim().length < 4) {
+      setError('Name must be at least 4 letters');
+      setLoading(false);
+      return;
+    }
+    if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+      setError('PIN must be 4 digits');
+      setLoading(false);
+      return;
+    }
+
+    // Try login first
+    const loginResult = login(name.trim(), pin);
+    if (loginResult.success) {
+      router.push('/profile');
+      setLoading(false);
+      return;
+    }
+
+    // If login failed, create new account
+    const signUpResult = signUp(name.trim(), pin);
+    if (signUpResult.success) {
       router.push('/profile');
     } else {
-      setError(result.error || 'Login failed');
+      setError(signUpResult.error || 'Failed');
     }
+    setLoading(false);
   };
 
   return (
@@ -35,41 +65,36 @@ export default function LoginPage() {
             <div className="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
               <LogIn className="w-8 h-8 text-orange-500" />
             </div>
-            <h1 className="text-xl font-bold text-stone-800">Welcome Back</h1>
-            <p className="text-sm text-stone-500 mt-1">Login to see your orders</p>
+            <h1 className="text-xl font-bold text-stone-800">Quick Login</h1>
+            <p className="text-sm text-stone-500 mt-1">Enter your name and a 4-digit PIN</p>
           </div>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">Username</label>
+              <label className="block text-sm font-medium text-stone-700 mb-1">Your Name</label>
               <input
                 type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 className="w-full px-4 py-3 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 text-lg"
-                placeholder="Your username"
+                placeholder="Min 4 letters"
                 autoFocus
+                maxLength={30}
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">Password</label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 text-lg pr-12"
-                  placeholder="Your password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
+              <label className="block text-sm font-medium text-stone-700 mb-1">4-Digit PIN</label>
+              <input
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={4}
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                className="w-full px-4 py-3 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 text-lg text-center tracking-[0.5em] font-mono"
+                placeholder="••••"
+              />
             </div>
 
             {error && (
@@ -77,23 +102,21 @@ export default function LoginPage() {
             )}
 
             <button
-              onClick={handleLogin}
-              disabled={!username || !password}
-              className="w-full bg-stone-900 text-white py-3 rounded-xl font-medium hover:bg-stone-800 transition-colors disabled:opacity-50"
+              onClick={handleSubmit}
+              disabled={!name || !pin || loading}
+              className="w-full bg-gradient-to-r from-orange-500 to-amber-500 text-white py-3.5 rounded-xl font-medium hover:from-orange-600 hover:to-amber-600 transition-all disabled:opacity-50 shadow-lg shadow-orange-500/20"
             >
-              Login
+              {loading ? 'Please wait...' : 'Login / Sign Up'}
             </button>
-
-            <p className="text-center text-sm text-stone-500">
-              Don&apos;t have an account?{' '}
-              <Link href="/sign-up" className="text-orange-500 font-medium">Sign Up</Link>
-            </p>
           </div>
         </div>
 
-        <div className="mt-4 bg-amber-50 rounded-xl p-4 border border-amber-100">
-          <p className="text-xs text-amber-700 text-center">
-            ⚠️ Your data is stored on this device only. You stay signed in until you choose to sign out.
+        <div className="mt-4 bg-stone-100 rounded-xl p-4 text-center">
+          <p className="text-xs text-stone-500">
+            New here? Just enter your name and PIN — account is created automatically.
+          </p>
+          <p className="text-xs text-stone-400 mt-1">
+            Stored on this device only. You stay logged in.
           </p>
         </div>
       </main>

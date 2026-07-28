@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, LogOut, ShoppingCart, TrendingUp, AlertTriangle } from 'lucide-react';
+import { User, LogOut, ShoppingCart, TrendingUp } from 'lucide-react';
 import Header from '@/components/Header';
 import { useUserStore } from '@/lib/userStore';
 import { formatPrice } from '@/lib/utils';
@@ -139,31 +139,15 @@ export default function ProfilePage() {
         {showLogoutConfirm && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 bg-amber-100 rounded-full flex items-center justify-center">
-                  <AlertTriangle className="w-5 h-5 text-amber-600" />
-                </div>
-                <h3 className="font-semibold text-stone-800">Sign Out?</h3>
-              </div>
-              
-              <div className="bg-amber-50 rounded-xl p-4 mb-4 border border-amber-100">
-                <p className="text-sm text-amber-800">
-                  ⚠️ <strong>Important:</strong> Your order history is stored on this device only.
-                </p>
-                <p className="text-sm text-amber-700 mt-2">
-                  If you sign out, you <strong>won&apos;t see your order history</strong> anymore. Signing back in will restore it.
-                </p>
-                <p className="text-sm text-amber-600 mt-2">
-                  💡 We recommend staying signed in unless you&apos;re not using this system anymore.
-                </p>
-              </div>
+              <h3 className="font-semibold text-stone-800 mb-2">Sign Out?</h3>
+              <p className="text-sm text-stone-500 mb-4">You&apos;ll need to enter your name and PIN again to see your orders.</p>
 
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowLogoutConfirm(false)}
                   className="flex-1 bg-stone-100 text-stone-700 py-2.5 rounded-xl font-medium"
                 >
-                  Stay Signed In
+                  Cancel
                 </button>
                 <button
                   onClick={handleLogout}
