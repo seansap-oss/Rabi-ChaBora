@@ -25,6 +25,11 @@ export type OrderStatus =
   | 'out_for_delivery'  // Out for delivery
   | 'completed';        // Order complete
 
+export interface OrderDiscount {
+  type: 'flat' | 'percent';
+  value: number;
+}
+
 export interface Order {
   id: string;
   items: CartItem[];
@@ -35,6 +40,8 @@ export interface Order {
   paidAt?: number;
   tableNumber?: string;
   customerName?: string;
+  customerPhone?: string;
+  discount?: OrderDiscount;
   orderType: 'dine_in' | 'takeaway' | 'delivery';
 }
 

@@ -24,6 +24,7 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<'upi' | 'gpay' | 'cash'>('upi');
   const [orderType, setOrderType] = useState<'dine_in' | 'takeaway' | 'delivery'>('dine_in');
   const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentStep, setPaymentStep] = useState<'select' | 'pay' | 'confirm'>('select');
   const nowRef = useRef(0);
@@ -47,6 +48,7 @@ export default function CheckoutPage() {
       createdAt,
       orderType,
       customerName: customerName || undefined,
+      customerPhone: customerPhone || undefined,
     };
     
     addOrder(order);
@@ -66,9 +68,9 @@ export default function CheckoutPage() {
       });
     }
     
-    // Send WhatsApp order confirmation to customer and staff
+    // Send WhatsApp order confirmation
     const waSettings = useWhatsAppStore.getState().settings;
-    if (waSettings.enabled && waSettings.orderConfirmation && waSettings.recipients.length > 0) {
+    if (waSettings.enabled && waSettings.orderConfirmation) {
       const items = cartItems.map(i => `${i.quantity}x ${i.menuItem.name}`).join(', ');
       const msg = formatOrderMessage(waSettings.templates.orderConfirmation, {
         name: customerName || 'Customer',
@@ -76,7 +78,14 @@ export default function CheckoutPage() {
         items,
         total: formatPrice(total),
       });
-      waSettings.recipients.forEach(num => sendWhatsAppMessage(num, msg));
+      // Send to customer if phone provided
+      if (customerPhone) {
+        sendWhatsAppMessage(customerPhone, msg);
+      }
+      // Send to staff recipients
+      if (waSettings.recipients.length > 0) {
+        waSettings.recipients.forEach(num => sendWhatsAppMessage(num, msg));
+      }
     }
     
     // Post to API
@@ -290,17 +299,28 @@ export default function CheckoutPage() {
             ))}
           </div>
           
-          {orderType === 'delivery' && (
-            <div className="mt-3">
-              <input
-                type="text"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="Your name (optional)"
-                className="w-full px-4 py-2 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
-              />
-            </div>
-          )}
+          <div className="mt-3 space-y-2">
+            <input
+              type="text"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              placeholder="Your name (optional)"
+              className="w-full px-4 py-2 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
+            />
+            <input
+              type="tel"
+              value={customerPhone}
+              onChange={(e) => setCustomerPhone(e.target.value)}
+              placeholder="Phone number for WhatsApp updates (optional)"
+              className="w-full px-4 py-2 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
+            />
+            {customerPhone && (
+              <p className="text-xs text-green-600 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                You&apos;ll receive order updates on WhatsApp
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Payment Method */}

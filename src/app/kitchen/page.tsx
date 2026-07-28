@@ -86,16 +86,23 @@ export default function KitchenPage() {
       });
       
       // Send WhatsApp ready notification when kitchen marks ready
-      if (status === 'ready' && waSettings.enabled && waSettings.readyNotification && waSettings.recipients.length > 0) {
+      if (status === 'ready' && waSettings.enabled && waSettings.readyNotification) {
         const order = orders.find(o => o.id === orderId);
-        if (order && order.customerName) {
+        if (order) {
           const msg = formatOrderMessage(waSettings.templates.readyNotification, {
-            name: order.customerName,
+            name: order.customerName || 'Customer',
             id: orderId.slice(-8),
             items: '',
             total: formatPrice(order.total),
           });
-          waSettings.recipients.forEach(num => sendWhatsAppMessage(num, msg));
+          // Send to customer
+          if (order.customerPhone) {
+            sendWhatsAppMessage(order.customerPhone, msg);
+          }
+          // Send to staff
+          if (waSettings.recipients.length > 0) {
+            waSettings.recipients.forEach(num => sendWhatsAppMessage(num, msg));
+          }
         }
       }
       

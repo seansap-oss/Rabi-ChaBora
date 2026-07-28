@@ -70,16 +70,23 @@ export default function DeliveryPage() {
         body: JSON.stringify({ id: orderId, status }),
       });
       
-      if (status === 'completed' && waSettings.enabled && waSettings.deliveryConfirmation && waSettings.recipients.length > 0) {
+      if (status === 'completed' && waSettings.enabled && waSettings.deliveryConfirmation) {
         const order = orders.find(o => o.id === orderId);
-        if (order && order.customerName) {
+        if (order) {
           const msg = formatOrderMessage(waSettings.templates.deliveryConfirmation, {
-            name: order.customerName,
+            name: order.customerName || 'Customer',
             id: orderId.slice(-8),
             items: '',
             total: formatPrice(order.total),
           });
-          waSettings.recipients.forEach(num => sendWhatsAppMessage(num, msg));
+          // Send to customer
+          if (order.customerPhone) {
+            sendWhatsAppMessage(order.customerPhone, msg);
+          }
+          // Send to staff
+          if (waSettings.recipients.length > 0) {
+            waSettings.recipients.forEach(num => sendWhatsAppMessage(num, msg));
+          }
         }
       }
       

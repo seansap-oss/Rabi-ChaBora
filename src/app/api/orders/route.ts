@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { Order, OrderStatus } from '@/lib/types';
+import { Order, OrderDiscount, OrderStatus } from '@/lib/types';
 
 // In-memory store
 const ordersStore: Order[] = [];
@@ -35,14 +35,25 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const { id, status } = await request.json() as { id: string; status: OrderStatus };
+    const body = await request.json() as {
+      id: string;
+      status?: OrderStatus;
+      customerName?: string;
+      customerPhone?: string;
+      discount?: OrderDiscount | null;
+    };
     
-    const order = ordersStore.find(o => o.id === id);
+    const order = ordersStore.find(o => o.id === body.id);
     if (order) {
-      order.status = status;
-      if (status === 'paid' || status === 'pending') {
-        order.paidAt = Date.now();
+      if (body.status) {
+        order.status = body.status;
+        if (body.status === 'paid' || body.status === 'pending') {
+          order.paidAt = Date.now();
+        }
       }
+      if (body.customerName !== undefined) order.customerName = body.customerName || undefined;
+      if (body.customerPhone !== undefined) order.customerPhone = body.customerPhone || undefined;
+      if (body.discount !== undefined) order.discount = body.discount || undefined;
     }
     
     return NextResponse.json({ success: true });
