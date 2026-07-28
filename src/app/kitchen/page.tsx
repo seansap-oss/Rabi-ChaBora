@@ -1,30 +1,24 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Check, ChefHat, RefreshCw, Clock, AlertCircle } from 'lucide-react';
+import { Clock, Check, Volume2, ChefHat, RefreshCw } from 'lucide-react';
 import { Order, OrderStatus } from '@/lib/types';
-import { formatPrice, formatDate } from '@/lib/utils';
-import { useWhatsAppStore, sendWhatsAppMessage, formatOrderMessage } from '@/lib/whatsappStore';
-import { useStore } from '@/lib/store';
+import { formatPrice } from '@/lib/utils';
 
 export default function KitchenPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const prevCount = useRef(0);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const waSettings = useWhatsAppStore((state) => state.settings);
-  const cafeSettings = useStore((state) => state.settings);
 
   useEffect(() => {
     audioContextRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
   }, []);
 
-  // Play notification sound
-  const playNotification = () => {
+  const playSound = () => {
     if (!audioContextRef.current) return;
     const ctx = audioContextRef.current;
     if (ctx.state === 'suspended') ctx.resume();
-    
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
@@ -34,15 +28,11 @@ export default function KitchenPage() {
     osc.type = 'sine';
     osc.start();
     osc.frequency.setValueAtTime(800, ctx.currentTime);
-    osc.frequency.setValueAtTime(1000, ctx.currentTime + 0.1);
-    osc.frequency.setValueAtTime(1200, ctx.currentTime + 0.2);
+    osc.frequency.setValueAtTime(1200, ctx.currentTime + 0.15);
     osc.stop(ctx.currentTime + 0.3);
-    // Voice announcement
     if ('speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance('New order received');
       utterance.volume = 0.75;
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
       setTimeout(() => window.speechSynthesis.speak(utterance), 350);
     }
   };
@@ -52,15 +42,8 @@ export default function KitchenPage() {
       const response = await fetch('/api/orders');
       if (response.ok) {
         const data = await response.json();
-        const kitchenOrders = data.filter((o: Order) => 
-          ['paid', 'preparing', 'ready'].includes(o.status)
-        );
-        
-        if (kitchenOrders.length > prevCount.current && prevCount.current > 0) {
-          playNotification();
-        }
-        prevCount.current = kitchenOrders.length;
-        
+        if (data.length > prevCount.current && prevCount.current > 0) playSound();
+        prevCount.current = data.length;
         setOrders(data);
       }
     } catch {
@@ -72,7 +55,7 @@ export default function KitchenPage() {
 
   useEffect(() => {
     fetchOrders();
-    const interval = setInterval(() => fetchOrders(), 3000);
+    const interval = setInterval(fetchOrders, 3000);
     return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -84,197 +67,191 @@ export default function KitchenPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: orderId, status }),
       });
-      
-      // Send WhatsApp ready notification when kitchen marks ready
-      if (status === 'ready' && waSettings.enabled && waSettings.readyNotification) {
-        const order = orders.find(o => o.id === orderId);
-        if (order) {
-          const msg = formatOrderMessage(waSettings.templates.readyNotification, {
-            name: order.customerName || 'Customer',
-            id: orderId.slice(-8),
-            items: '',
-            total: formatPrice(order.total),
-          });
-          // Send to customer
-          if (order.customerPhone) {
-            sendWhatsAppMessage(order.customerPhone, msg);
-          }
-          // Send to staff
-          if (waSettings.recipients.length > 0) {
-            waSettings.recipients.forEach(num => sendWhatsAppMessage(num, msg));
-          }
-        }
-      }
-      
-      setOrders(prev => prev.map(o => 
-        o.id === orderId ? { ...o, status } : o
-      ));
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
     } catch (error) {
       console.error('Failed to update order:', error);
     }
   };
 
-  const activeOrders = orders.filter(o => ['paid', 'preparing', 'ready'].includes(o.status));
-  const readyOrders = orders.filter(o => o.status === 'ready');
-  const preparingOrders = orders.filter(o => o.status === 'preparing');
-  const newOrders = orders.filter(o => o.status === 'paid');
+  const received = orders.filter(o => ['pending_payment', 'paid', 'pending'].includes(o.status));
+  const inProgress = orders.filter(o => o.status === 'preparing');
+  const completed = orders.filter(o => ['ready', 'completed', 'out_for_delivery'].includes(o.status));
 
-  const getStatusColor = (status: OrderStatus) => {
-    switch (status) {
-      case 'paid': return 'bg-amber-500';
-      case 'preparing': return 'bg-blue-500';
-      case 'ready': return 'bg-green-500';
-      default: return 'bg-stone-500';
-    }
+  const getTimeAgo = (createdAt: number) => {
+    const mins = Math.floor((Date.now() - createdAt) / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins === 1) return '1 min ago';
+    return `${mins} min ago`;
   };
 
-  const getStatusLabel = (status: OrderStatus) => {
-    switch (status) {
-      case 'paid': return 'NEW ORDER';
-      case 'preparing': return 'PREPARING';
-      case 'ready': return 'READY';
-      default: return status;
-    }
-  };
+  const columns = [
+    { title: 'Order Received', icon: '🔔', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', badge: 'bg-amber-100 text-amber-700', orders: received, action: { label: 'Start Preparing', status: 'preparing' as OrderStatus, color: 'bg-blue-500 hover:bg-blue-600' } },
+    { title: 'In Progress', icon: '👨‍🍳', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', badge: 'bg-blue-100 text-blue-700', orders: inProgress, action: { label: 'Mark Ready', status: 'ready' as OrderStatus, color: 'bg-green-500 hover:bg-green-600' } },
+    { title: 'Completed', icon: '✅', color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', badge: 'bg-green-100 text-green-700', orders: completed, action: null },
+  ];
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-stone-950 text-white flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-2 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="mt-4 text-stone-400">Loading kitchen display...</p>
+          <div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="mt-4 text-slate-400">Loading kitchen display...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-stone-950 text-white">
+    <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <header className="bg-stone-900 border-b border-stone-800 px-4 py-3">
-        <div className="flex items-center justify-between">
+      <header className="bg-white border-b border-slate-200 px-6 py-4">
+        <div className="flex items-center justify-between max-w-[1800px] mx-auto">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl flex items-center justify-center">
-              <ChefHat className="w-6 h-6" />
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <ChefHat className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="font-semibold text-lg">Kitchen Display</h1>
-              <div className="flex items-center gap-2 text-xs text-stone-400">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                Live - Auto-refreshing
-              </div>
+              <h1 className="font-bold text-slate-800 text-lg">Kitchen Display</h1>
+              <p className="text-xs text-slate-400">{orders.length} total orders</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-amber-500 rounded-full"></div>
-                <span>New: {newOrders.length}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                <span>Cooking: {preparingOrders.length}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                <span>Ready: {readyOrders.length}</span>
-              </div>
-            </div>
-            <button
-              onClick={fetchOrders}
-              className="p-2 bg-stone-800 hover:bg-stone-700 rounded-lg transition-colors"
-            >
-              <RefreshCw className="w-5 h-5" />
-            </button>
-          </div>
+          <button onClick={fetchOrders} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
+            <RefreshCw className="w-4 h-4 text-slate-600" />
+          </button>
         </div>
       </header>
 
-      {/* Orders */}
-      <main className="p-4">
-        {activeOrders.length === 0 ? (
-          <div className="text-center py-20 text-stone-500">
-            <ChefHat className="w-16 h-16 mx-auto mb-4 opacity-50" />
-            <p className="text-xl">No orders in kitchen</p>
-            <p className="text-sm mt-2">Waiting for new orders...</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {activeOrders.map(order => (
-              <div 
-                key={order.id} 
-                className={`bg-stone-900 rounded-xl border-l-4 overflow-hidden ${
-                  order.status === 'paid' ? 'border-l-amber-500 animate-pulse' :
-                  order.status === 'preparing' ? 'border-l-blue-500' :
-                  'border-l-green-500'
-                }`}
-              >
-                {/* Status Badge */}
-                <div className={`px-3 py-1.5 text-center text-xs font-bold tracking-wider ${getStatusColor(order.status)}`}>
-                  {getStatusLabel(order.status)}
-                </div>
+      {/* Desktop: Horizontal Columns */}
+      <div className="hidden md:flex gap-4 p-6 max-w-[1800px] mx-auto h-[calc(100vh-73px)]">
+        {columns.map(col => (
+          <div key={col.title} className="flex-1 flex flex-col min-w-0">
+            {/* Column Header */}
+            <div className={`${col.bg} ${col.border} border rounded-t-xl px-4 py-3 flex items-center justify-between flex-shrink-0`}>
+              <div className="flex items-center gap-2">
+                <span className="text-xl">{col.icon}</span>
+                <h2 className={`font-bold ${col.color}`}>{col.title}</h2>
+              </div>
+              <span className={`${col.badge} text-sm font-bold px-3 py-1 rounded-full`}>{col.orders.length}</span>
+            </div>
 
-                {/* Order Header */}
-                <div className="p-3 border-b border-stone-800">
-                  <div className="flex justify-between items-center">
-                    <span className="font-mono text-sm text-stone-400">#{order.id.slice(-6)}</span>
-                    <span className="text-white font-bold">{formatPrice(order.total)}</span>
-                  </div>
-                  <p className="text-xs text-stone-500 mt-1">
-                    {formatDate(order.createdAt)} • {order.paymentMethod.toUpperCase()}
-                  </p>
+            {/* Column Content */}
+            <div className="flex-1 overflow-y-auto bg-white border border-t-0 border-slate-200 rounded-b-xl p-3 space-y-3">
+              {col.orders.length === 0 ? (
+                <div className="text-center py-12 text-slate-300">
+                  <p className="text-sm">No orders</p>
                 </div>
-
-                {/* Items */}
-                <div className="p-3 space-y-2">
-                  {order.items.map((item, idx) => (
-                    <div key={idx} className="bg-stone-800/50 rounded-lg p-2">
-                      <div className="flex justify-between">
-                        <span className="font-medium">
-                          {item.quantity}x {item.menuItem.name}
+              ) : (
+                col.orders.map(order => (
+                  <div key={order.id} className="bg-slate-50 rounded-xl border border-slate-200 p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="font-mono text-xs text-slate-400">#{order.id.slice(-6)}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-400 flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {getTimeAgo(order.createdAt)}
+                        </span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          order.status === 'pending_payment' ? 'bg-amber-100 text-amber-700' :
+                          order.status === 'paid' ? 'bg-blue-100 text-blue-700' :
+                          order.status === 'preparing' ? 'bg-purple-100 text-purple-700' :
+                          order.status === 'ready' ? 'bg-green-100 text-green-700' :
+                          'bg-slate-100 text-slate-500'
+                        }`}>
+                          {order.paymentMethod.toUpperCase()}
                         </span>
                       </div>
-                      {item.note && (
-                        <p className="text-xs text-amber-400 mt-1 flex items-center gap-1">
-                          <AlertCircle className="w-3 h-3" />
-                          {item.note}
-                        </p>
+                    </div>
+
+                    {/* Customer */}
+                    {(order.customerName || order.customerPhone) && (
+                      <div className="mb-2 text-xs text-slate-500">
+                        {order.customerName && <span className="font-medium">{order.customerName}</span>}
+                        {order.customerName && order.customerPhone && <span className="mx-1">·</span>}
+                        {order.customerPhone && <span>{order.customerPhone}</span>}
+                      </div>
+                    )}
+
+                    {/* Order Type */}
+                    <div className="mb-2">
+                      <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-medium uppercase">
+                        {order.orderType === 'dine_in' ? '🍽️ Dine In' : order.orderType === 'takeaway' ? '📦 Takeaway' : '🚚 Delivery'}
+                      </span>
+                    </div>
+
+                    {/* Items */}
+                    <div className="space-y-1 mb-3">
+                      {order.items.map((item, idx) => (
+                        <div key={idx} className="flex justify-between text-sm">
+                          <span className="text-slate-700 font-medium">{item.quantity}x {item.menuItem.name}</span>
+                          {item.note && <span className="text-amber-600 text-xs italic">*{item.note}</span>}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Total */}
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-200">
+                      <span className="font-bold text-slate-800">{formatPrice(order.total)}</span>
+                      {col.action && (
+                        <button
+                          onClick={() => updateStatus(order.id, col.action!.status)}
+                          className={`${col.action.color} text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors shadow-sm`}
+                        >
+                          {col.action.status === 'preparing' ? <ChefHat className="w-4 h-4" /> : <Check className="w-4 h-4" />}
+                          {col.action.label}
+                        </button>
                       )}
                     </div>
-                  ))}
-                </div>
-
-                {/* Actions */}
-                <div className="p-3 border-t border-stone-800">
-                  {order.status === 'paid' && (
-                    <button
-                      onClick={() => updateStatus(order.id, 'preparing')}
-                      className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"
-                    >
-                      <Clock className="w-5 h-5" />
-                      Start Preparing
-                    </button>
-                  )}
-                  {order.status === 'preparing' && (
-                    <button
-                      onClick={() => updateStatus(order.id, 'ready')}
-                      className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"
-                    >
-                      <Check className="w-5 h-5" />
-                      Mark as Ready
-                    </button>
-                  )}
-                  {order.status === 'ready' && (
-                    <p className="text-center text-green-400 font-medium py-2">
-                      Ready for pickup!
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))}
+                  </div>
+                ))
+              )}
+            </div>
           </div>
-        )}
-      </main>
+        ))}
+      </div>
+
+      {/* Mobile: Vertical Sections */}
+      <div className="md:hidden p-4 space-y-6">
+        {columns.map(col => (
+          <div key={col.title}>
+            <div className={`${col.bg} ${col.border} border rounded-t-xl px-4 py-3 flex items-center justify-between`}>
+              <div className="flex items-center gap-2">
+                <span className="text-lg">{col.icon}</span>
+                <h2 className={`font-bold text-sm ${col.color}`}>{col.title}</h2>
+              </div>
+              <span className={`${col.badge} text-xs font-bold px-2.5 py-0.5 rounded-full`}>{col.orders.length}</span>
+            </div>
+            <div className="bg-white border border-t-0 border-slate-200 rounded-b-xl p-3 space-y-3">
+              {col.orders.length === 0 ? (
+                <div className="text-center py-6 text-slate-300 text-sm">No orders</div>
+              ) : (
+                col.orders.map(order => (
+                  <div key={order.id} className="bg-slate-50 rounded-xl border border-slate-200 p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-mono text-xs text-slate-400">#{order.id.slice(-6)}</span>
+                      <span className="text-xs text-slate-400">{getTimeAgo(order.createdAt)}</span>
+                    </div>
+                    <p className="text-sm text-slate-700 mb-2">
+                      {order.items.map(i => `${i.quantity}x ${i.menuItem.name}`).join(', ')}
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-800 text-sm">{formatPrice(order.total)}</span>
+                      {col.action && (
+                        <button
+                          onClick={() => updateStatus(order.id, col.action!.status)}
+                          className={`${col.action.color} text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1`}
+                        >
+                          {col.action.status === 'preparing' ? <ChefHat className="w-3 h-3" /> : <Check className="w-3 h-3" />}
+                          {col.action.label}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

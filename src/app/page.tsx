@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { LayoutGrid, Grid2x2, Rows3, Coffee } from 'lucide-react';
+import { LayoutGrid, Grid2x2, Rows3, Coffee, List } from 'lucide-react';
 import Header from '@/components/Header';
 import MenuItemCard from '@/components/MenuItemCard';
 import CategoryTabs from '@/components/CategoryTabs';
@@ -10,7 +10,7 @@ import { CATEGORIES } from '@/lib/types';
 
 export default function HomePage() {
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [gridCols, setGridCols] = useState<1 | 2 | 3>(1);
+  const [viewMode, setViewMode] = useState<'list' | 'grid' | 'compact'>('compact');
   const [showAnimation, setShowAnimation] = useState(true);
   const menuItems = useStore((state) => state.menuItems);
   const settings = useStore((state) => state.settings);
@@ -19,7 +19,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setGridCols(window.innerWidth < 640 ? 1 : window.innerWidth < 1024 ? 2 : 3);
+      setViewMode(window.innerWidth < 640 ? 'list' : 'compact');
     }
     const timer = setTimeout(() => setShowAnimation(false), 1200);
     return () => clearTimeout(timer);
@@ -32,12 +32,6 @@ export default function HomePage() {
     ? allAvailable
     : allAvailable.filter((item) => item.category === selectedCategory);
 
-  const gridClass = {
-    1: 'grid-cols-1',
-    2: 'grid-cols-2',
-    3: 'grid-cols-2 sm:grid-cols-3',
-  }[gridCols];
-
   const handleCategorySelect = (cat: string) => {
     setSelectedCategory(cat);
     setTimeout(() => {
@@ -49,7 +43,7 @@ export default function HomePage() {
     <div className="min-h-screen" style={{ backgroundColor: theme.backgroundColor, color: theme.textColor, fontFamily: theme.bodyFont }}>
       <Header showSettings />
 
-      {/* Category Tabs + Grid Toggle */}
+      {/* Category Tabs + View Toggle */}
       <div className="sticky top-16 z-40 bg-white/90 backdrop-blur-md border-b border-stone-200 px-4 py-2.5">
         <div className="max-w-4xl mx-auto flex items-center gap-3">
           <div className="flex-1 overflow-hidden">
@@ -61,20 +55,23 @@ export default function HomePage() {
           </div>
           <div className="flex items-center gap-0.5 bg-stone-100 rounded-lg p-0.5 flex-shrink-0">
             <button
-              onClick={() => setGridCols(1)}
-              className={`p-1.5 rounded-md transition-colors ${gridCols === 1 ? 'bg-white shadow-sm text-stone-800' : 'text-stone-400'}`}
+              onClick={() => setViewMode('list')}
+              className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-white shadow-sm text-stone-800' : 'text-stone-400'}`}
+              title="List view"
             >
-              <Rows3 className="w-3.5 h-3.5" />
+              <List className="w-3.5 h-3.5" />
             </button>
             <button
-              onClick={() => setGridCols(2)}
-              className={`p-1.5 rounded-md transition-colors ${gridCols === 2 ? 'bg-white shadow-sm text-stone-800' : 'text-stone-400'}`}
+              onClick={() => setViewMode('compact')}
+              className={`p-1.5 rounded-md transition-colors ${viewMode === 'compact' ? 'bg-white shadow-sm text-stone-800' : 'text-stone-400'}`}
+              title="Grid view"
             >
               <Grid2x2 className="w-3.5 h-3.5" />
             </button>
             <button
-              onClick={() => setGridCols(3)}
-              className={`p-1.5 rounded-md transition-colors ${gridCols === 3 ? 'bg-white shadow-sm text-stone-800' : 'text-stone-400'}`}
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-white shadow-sm text-stone-800' : 'text-stone-400'}`}
+              title="Large cards"
             >
               <LayoutGrid className="w-3.5 h-3.5" />
             </button>
@@ -82,7 +79,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      <main ref={mainRef} className="max-w-4xl mx-auto px-4 pt-4 pb-8">
+      <main ref={mainRef} className="max-w-4xl mx-auto px-4 pt-4 pb-24">
         {/* Entry Animation */}
         {showAnimation && (
           <div className="mb-4 overflow-hidden rounded-2xl">
@@ -90,7 +87,7 @@ export default function HomePage() {
               {allAvailable.slice(0, 6).map((item, i) => (
                 <div
                   key={item.id}
-                  className="flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden"
+                  className="flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden"
                   style={{ animationDelay: `${i * 100}ms` }}
                 >
                   <img
@@ -113,13 +110,13 @@ export default function HomePage() {
           <div className="mb-5">
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1 h-5 rounded-full" style={{ backgroundColor: theme.accentColor }}></div>
-              <h2 className="font-semibold text-sm" style={{ fontFamily: theme.headingFont }}>Specials of the Day</h2>
+              <h2 className="font-semibold text-sm" style={{ fontFamily: theme.headingFont }}>Menu Board Specials</h2>
               <span className="text-xs text-stone-400 ml-1">{specialItems.length}</span>
             </div>
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 snap-x snap-mandatory">
               {specialItems.map((item) => (
-                <div key={item.id} className="flex-shrink-0 snap-start" style={{ width: gridCols === 1 ? 'calc(100% - 8px)' : gridCols === 2 ? 'calc(50% - 6px)' : 'calc(33.333% - 8px)' }}>
-                  <MenuItemCard item={item} compact={gridCols > 1} />
+                <div key={item.id} className="flex-shrink-0 snap-start" style={{ width: viewMode === 'list' ? 'calc(100% - 8px)' : viewMode === 'compact' ? 'calc(50% - 6px)' : 'calc(33.333% - 8px)' }}>
+                  <MenuItemCard item={item} compact={viewMode === 'compact'} list={viewMode === 'list'} />
                 </div>
               ))}
             </div>
@@ -127,7 +124,7 @@ export default function HomePage() {
         )}
 
         {/* Menu Section */}
-        <div ref={mainRef}>
+        <div>
           <div className="flex items-center gap-2 mb-3">
             <div className="w-1 h-5 rounded-full" style={{ backgroundColor: theme.primaryColor }}></div>
             <h2 className="font-semibold text-sm" style={{ fontFamily: theme.headingFont }}>
@@ -136,16 +133,22 @@ export default function HomePage() {
             <span className="text-xs text-stone-400 ml-1">{filteredItems.length}</span>
           </div>
 
-          {gridCols === 1 ? (
-            <div className="space-y-3">
+          {viewMode === 'list' ? (
+            <div className="space-y-2">
               {filteredItems.map((item) => (
-                <MenuItemCard key={item.id} item={item} />
+                <MenuItemCard key={item.id} item={item} list />
+              ))}
+            </div>
+          ) : viewMode === 'compact' ? (
+            <div className="grid grid-cols-2 gap-3">
+              {filteredItems.map((item) => (
+                <MenuItemCard key={item.id} item={item} compact />
               ))}
             </div>
           ) : (
-            <div className={`${gridClass} gap-3`}>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {filteredItems.map((item) => (
-                <MenuItemCard key={item.id} item={item} compact />
+                <MenuItemCard key={item.id} item={item} />
               ))}
             </div>
           )}
@@ -160,27 +163,41 @@ export default function HomePage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-stone-200 py-6">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <div className="flex justify-center gap-4 mb-3">
+      <footer className="border-t border-stone-200 bg-white">
+        <div className="max-w-4xl mx-auto px-4 py-6">
+          {/* Social Links */}
+          <div className="flex justify-center gap-4 mb-4">
             {settings.socialLinks.instagram && (
-              <a href={settings.socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="text-xs opacity-50 hover:opacity-100 transition-opacity">
+              <a href={settings.socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="text-xs text-stone-400 hover:text-stone-600 transition-colors">
                 Instagram
               </a>
             )}
             {settings.socialLinks.facebook && (
-              <a href={settings.socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="text-xs opacity-50 hover:opacity-100 transition-opacity">
+              <a href={settings.socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="text-xs text-stone-400 hover:text-stone-600 transition-colors">
                 Facebook
               </a>
             )}
             {settings.socialLinks.twitter && (
-              <a href={settings.socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="text-xs opacity-50 hover:opacity-100 transition-opacity">
+              <a href={settings.socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="text-xs text-stone-400 hover:text-stone-600 transition-colors">
                 Twitter
               </a>
             )}
           </div>
-          <p className="text-[11px] opacity-30">{settings.address}</p>
-          <p className="text-[11px] opacity-30">{settings.phone}</p>
+          <p className="text-[11px] text-stone-400 text-center">{settings.address}</p>
+          <p className="text-[11px] text-stone-400 text-center">{settings.phone}</p>
+          
+          {/* Avit Solutions Branding */}
+          <div className="mt-4 pt-4 border-t border-stone-100 text-center">
+            <p className="text-[10px] text-stone-300">
+              Powered by{' '}
+              <a href="https://www.avitsolutions.tech" target="_blank" rel="noopener noreferrer" className="text-stone-400 hover:text-stone-600 transition-colors font-medium">
+                AVIT Solutions
+              </a>
+            </p>
+            <p className="text-[10px] text-stone-300 mt-0.5">
+              Contact: <a href="tel:9774242635" className="text-stone-400 hover:text-stone-600">9774242635</a>
+            </p>
+          </div>
         </div>
       </footer>
     </div>
