@@ -50,6 +50,7 @@ export interface CafeSettings {
   tagline: string;
   logo: string;
   upiId: string;
+  paymentQRImage: string;
   phone: string;
   address: string;
   socialLinks: {
@@ -110,6 +111,7 @@ export const DEFAULT_CAFE_SETTINGS: CafeSettings = {
   tagline: 'Freshly brewed happiness',
   logo: '/cafe-logo.png',
   upiId: 'cafedelight@upi',
+  paymentQRImage: '',
   phone: '+91 98765 43210',
   address: '123 Coffee Street, Mumbai',
   socialLinks: {

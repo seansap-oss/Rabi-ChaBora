@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { 
   UtensilsCrossed, 
@@ -18,8 +18,12 @@ import {
   Download,
   Upload,
   Trash2,
-  LogOut
+  LogOut,
+  Camera,
+  X,
+  Check
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import Header from '@/components/Header';
 import OwnerGate from '@/components/OwnerGate';
 import { useStore } from '@/lib/store';
@@ -30,6 +34,7 @@ import { useWhatsAppStore, sendWhatsAppMessage, formatOrderMessage } from '@/lib
 
 function AdminContent() {
   const settings = useStore((state) => state.settings);
+  const updateSettings = useStore((state) => state.updateSettings);
   const [orders, setOrders] = useState<Order[]>([]);
   const [period, setPeriod] = useState<'day' | 'week' | 'month'>('day');
   const ownerLogout = useOwnerStore((state) => state.logout);
@@ -41,6 +46,35 @@ function AdminContent() {
   const lastAutoSend = useOwnerStore((state) => state.lastAutoSend);
   const setLastAutoSend = useOwnerStore((state) => state.setLastAutoSend);
   const waSettings = useWhatsAppStore((state) => state.settings);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [qrPreview, setQrPreview] = useState('');
+  const [upiInput, setUpiInput] = useState('');
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
+
+  // Back button protection
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    
+    const handlePopState = () => {
+      if (window.confirm('Are you sure you want to leave the admin dashboard?')) {
+        window.history.back();
+      } else {
+        window.history.pushState(null, '', window.location.href);
+      }
+    };
+    
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -55,7 +89,6 @@ function AdminContent() {
       }
     };
     
-    // Clear owner store on admin page load to prevent duplicate keys
     useOwnerStore.setState({ 
       sales: [],
       lastAutoSend: null,
@@ -324,6 +357,141 @@ function AdminContent() {
               <p className="font-medium text-stone-800 text-sm">Menu Board</p>
               <p className="text-xs text-stone-400">Digital signage</p>
             </Link>
+          </div>
+        </div>
+
+        {/* Payment QR Setup */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-stone-100 mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+              <Banknote className="w-5 h-5 text-green-600" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-stone-800">Payment QR Setup</h2>
+              <p className="text-xs text-stone-400">Upload your GPay/UPI QR for reference — checkout uses UPI deep link automatically</p>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* QR Image Upload */}
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-2">QR Code Image (Reference)</label>
+              <div className="border-2 border-dashed border-stone-200 rounded-xl p-4 text-center hover:border-green-300 transition-colors relative">
+                {settings.paymentQRImage ? (
+                  <div className="relative">
+                    <img
+                      src={settings.paymentQRImage}
+                      alt="Payment QR"
+                      className="w-40 h-40 mx-auto object-contain rounded-lg"
+                    />
+                    <button
+                      onClick={() => updateSettings({ paymentQRImage: '' })}
+                      className="absolute top-0 right-0 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                    <p className="text-xs text-stone-400 mt-2">Click × to remove</p>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="cursor-pointer py-6"
+                  >
+                    <Camera className="w-10 h-10 text-stone-300 mx-auto mb-2" />
+                    <p className="text-sm text-stone-500">Tap to upload QR image</p>
+                    <p className="text-xs text-stone-400 mt-1">JPG, PNG — shot from phone camera</p>
+                  </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                      const img = new Image();
+                      img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const maxW = 800;
+                        const ratio = Math.min(maxW / img.width, maxW / img.height, 1);
+                        canvas.width = img.width * ratio;
+                        canvas.height = img.height * ratio;
+                        const ctx = canvas.getContext('2d');
+                        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        const resized = canvas.toDataURL('image/jpeg', 0.8);
+                        updateSettings({ paymentQRImage: resized });
+                      };
+                      img.src = ev.target?.result as string;
+                    };
+                    reader.readAsDataURL(file);
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* UPI Details */}
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-2">UPI Address (VPA)</label>
+              <input
+                type="text"
+                value={settings.upiId}
+                onChange={(e) => {
+                  setUpiInput(e.target.value);
+                  setShowSaveConfirm(false);
+                }}
+                placeholder="yourname@upi"
+                className="w-full px-4 py-3 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 mb-4"
+              />
+              
+              {upiInput && upiInput !== settings.upiId && (
+                <button
+                  onClick={() => {
+                    updateSettings({ upiId: upiInput });
+                    setShowSaveConfirm(true);
+                    setTimeout(() => setShowSaveConfirm(false), 2000);
+                  }}
+                  className="w-full bg-green-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-green-600 transition-colors flex items-center justify-center gap-2 mb-4"
+                >
+                  {showSaveConfirm ? <Check className="w-4 h-4" /> : <QrCode className="w-4 h-4" />}
+                  {showSaveConfirm ? 'Saved!' : 'Save UPI Address'}
+                </button>
+              )}
+
+              <div className="bg-stone-50 rounded-xl p-4">
+                <p className="text-xs font-medium text-stone-500 mb-2">How it works:</p>
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2">
+                    <span className="w-5 h-5 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">1</span>
+                    <p className="text-xs text-stone-600">Customer scans table QR → opens menu</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="w-5 h-5 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">2</span>
+                    <p className="text-xs text-stone-600">At checkout, taps &quot;Pay via UPI&quot;</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="w-5 h-5 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">3</span>
+                    <p className="text-xs text-stone-600">System opens GPay/PhonePe with your UPI ID pre-filled</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="w-5 h-5 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">4</span>
+                    <p className="text-xs text-stone-600">Customer enters amount & pays — no second scan needed!</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-3 bg-green-50 rounded-xl p-3 border border-green-100">
+                <p className="text-xs text-green-700">
+                  <strong>Current UPI ID:</strong> {settings.upiId || 'Not set'}
+                </p>
+                <p className="text-xs text-green-600 mt-1">
+                  This is used for the dynamic UPI deep link at checkout
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
