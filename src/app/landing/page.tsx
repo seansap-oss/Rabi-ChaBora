@@ -54,13 +54,6 @@ const FEATURES = [
     category: 'growth',
   },
   {
-    icon: <Megaphone className="w-6 h-6" />,
-    title: 'Facebook & Instagram',
-    desc: 'Auto-post daily specials to Facebook Page and Instagram. Reply to DMs with order links. Run promos.',
-    color: 'bg-indigo-500',
-    category: 'growth',
-  },
-  {
     icon: <Printer className="w-6 h-6" />,
     title: 'Receipt Designer',
     desc: 'Customize receipts for any printer: 58mm, 80mm, A4. Add logo, watermark, taxes. Print wirelessly.',
@@ -151,7 +144,6 @@ const PRICING = [
       'Everything in Growth',
       'Digital Menu Board',
       'All 10 WhatsApp Features',
-      'Facebook & Instagram Auto-Post',
       'Receipt Printer (any size)',
       'Owner Dashboard + Reports',
       'Unlimited Users',
@@ -230,7 +222,7 @@ export default function LandingPage() {
             Your Cafe, <span className="bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent">Digitized</span>
           </h1>
           <p className="text-lg sm:text-xl text-stone-500 max-w-2xl mx-auto mb-8">
-            QR ordering, POS, kitchen display, delivery tracking, <strong className="text-stone-700">loyalty rewards</strong>, WhatsApp notifications, <strong className="text-stone-700">social media automation</strong>, and sales analytics — all in one simple app. No app download. Works on any phone.
+            QR ordering, POS, kitchen display, delivery tracking, <strong className="text-stone-700">loyalty rewards</strong>, WhatsApp notifications, receipt printer, and sales analytics — all in one simple app. No app download. Works on any phone.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
             <Link href="/login" className="w-full sm:w-auto bg-gradient-to-r from-orange-500 to-amber-500 text-white px-8 py-4 rounded-2xl font-bold text-lg hover:from-orange-600 hover:to-amber-600 transition-all shadow-xl shadow-orange-500/20 flex items-center justify-center gap-2">
@@ -381,73 +373,27 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Social Media Integration Spotlight */}
-      <section className="py-20 px-4 sm:px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            <div className="order-2 md:order-1">
-              <div className="bg-stone-100 rounded-3xl p-8">
-                <div className="space-y-4">
-                  <div className="bg-white rounded-xl p-4 shadow-sm flex items-center gap-4">
-                    <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center text-white">
-                      <span className="text-xl font-bold">f</span>
-                    </div>
-                    <div>
-                      <p className="font-bold text-stone-800">Auto-Post to Facebook</p>
-                      <p className="text-xs text-stone-500">Daily specials posted automatically at 10 AM</p>
-                    </div>
-                    <div className="ml-auto w-3 h-3 bg-green-500 rounded-full" />
-                  </div>
-                  <div className="bg-white rounded-xl p-4 shadow-sm flex items-center gap-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center text-white">
-                      <AtSign className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-stone-800">Instagram Stories</p>
-                      <p className="text-xs text-stone-500">Auto-share menu items as stories with price tags</p>
-                    </div>
-                    <div className="ml-auto w-3 h-3 bg-green-500 rounded-full" />
-                  </div>
-                  <div className="bg-white rounded-xl p-4 shadow-sm flex items-center gap-4">
-                    <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center text-white">
-                      <MessageSquare className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-stone-800">WhatsApp Broadcasts</p>
-                      <p className="text-xs text-stone-500">Promo messages to all customers weekly</p>
-                    </div>
-                    <div className="ml-auto w-3 h-3 bg-green-500 rounded-full" />
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="order-1 md:order-2">
-              <div className="inline-flex items-center gap-2 bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm font-medium mb-4">
-                <Send className="w-4 h-4" /> Social Media Automation
-              </div>
-              <h2 className="text-3xl sm:text-4xl font-bold text-stone-900 mb-4">
-                Your Cafe, <span className="text-indigo-500">Everywhere</span>
-              </h2>
-              <p className="text-stone-600 mb-6">
-                Auto-post daily specials to Facebook and Instagram. Reply to DMs with order links. Run promotions. Everything from one dashboard — no need to open 3 apps.
-              </p>
-              <ul className="space-y-3">
-                {[
-                  'Auto-post daily specials to Facebook Page',
-                  'Instagram Stories with menu items + prices',
-                  'Reply to DMs with order links',
-                  'Schedule promotions in advance',
-                  'Track engagement and reach',
-                  'Birthday promos shared to social media',
-                ].map((item) => (
-                  <li key={item} className="flex items-start gap-2 text-sm text-stone-600">
-                    <Check className="w-4 h-4 text-indigo-500 mt-0.5 flex-shrink-0" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
+      {/* Social Media — Custom Add-On */}
+      <section className="py-20 px-4 sm:px-6 bg-stone-50">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm font-medium mb-4">
+            <Send className="w-4 h-4" /> Custom Add-On
           </div>
+          <h2 className="text-3xl sm:text-4xl font-bold text-stone-900 mb-4">
+            Facebook & Instagram <span className="text-indigo-500">Integration</span>
+          </h2>
+          <p className="text-stone-500 max-w-xl mx-auto mb-8">
+            Want auto-posting to social media? We build it custom for your cafe. Facebook Page posts, Instagram Stories, DM auto-replies — all configured to your brand.
+          </p>
+          <div className="flex flex-wrap justify-center gap-4 text-sm text-stone-600">
+            <span className="bg-white px-4 py-2 rounded-xl border border-stone-200">Auto-post daily specials</span>
+            <span className="bg-white px-4 py-2 rounded-xl border border-stone-200">Instagram Stories with prices</span>
+            <span className="bg-white px-4 py-2 rounded-xl border border-stone-200">DM auto-reply bot</span>
+            <span className="bg-white px-4 py-2 rounded-xl border border-stone-200">Scheduled promotions</span>
+          </div>
+          <a href="tel:9774242635" className="inline-flex items-center gap-2 mt-8 bg-indigo-500 text-white px-6 py-3 rounded-xl font-medium hover:bg-indigo-600 transition-colors">
+            Request Custom Integration <ArrowRight className="w-4 h-4" />
+          </a>
         </div>
       </section>
 
