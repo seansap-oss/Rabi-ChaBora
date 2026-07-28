@@ -9,6 +9,7 @@ import { useStore } from '@/lib/store';
 import { useUserStore } from '@/lib/userStore';
 import { formatPrice, generateOrderId } from '@/lib/utils';
 import { Order } from '@/lib/types';
+import { useLoyaltyStore } from '@/lib/loyaltyStore';
 import { useWhatsAppStore, sendWhatsAppMessage, formatOrderMessage } from '@/lib/whatsappStore';
 
 export default function CheckoutPage() {
@@ -20,6 +21,7 @@ export default function CheckoutPage() {
   const isLoggedIn = useUserStore((state) => state.session?.loggedIn);
   const username = useUserStore((state) => state.session?.username);
   const addUserOrder = useUserStore((state) => state.addUserOrder);
+  const loyaltyConfig = useLoyaltyStore((state) => state.config);
   
   const [paymentMethod, setPaymentMethod] = useState<'upi' | 'gpay' | 'cash'>('upi');
   const [orderType, setOrderType] = useState<'dine_in' | 'takeaway' | 'delivery'>('dine_in');
@@ -85,6 +87,24 @@ export default function CheckoutPage() {
       // Send to staff recipients
       if (waSettings.recipients.length > 0) {
         waSettings.recipients.forEach(num => sendWhatsAppMessage(num, msg));
+      }
+    }
+    
+    // Add loyalty stamp if phone provided
+    if (customerPhone && loyaltyConfig.enabled) {
+      const { addStamp, getNearMissCustomers } = useLoyaltyStore.getState();
+      const result = addStamp(customerPhone, order.id, total);
+      
+      // Send near-miss notification (1 stamp away from reward)
+      if (result.stamps === loyaltyConfig.stampsRequired - 1 && waSettings.enabled && waSettings.orderConfirmation) {
+        const nearMsg = `☕ You're 1 stamp away from a FREE reward at ${settings.name}! Your next visit earns you: ${loyaltyConfig.rewardDescription}. Don't miss out!`;
+        sendWhatsAppMessage(customerPhone, nearMsg);
+      }
+      
+      // Send reward earned notification
+      if (result.rewardReady && waSettings.enabled && waSettings.orderConfirmation) {
+        const rewardMsg = `🎉 CONGRATULATIONS! You've earned a FREE reward at ${settings.name}! ${loyaltyConfig.rewardDescription}. Show this message to claim your reward on your next visit!`;
+        sendWhatsAppMessage(customerPhone, rewardMsg);
       }
     }
     

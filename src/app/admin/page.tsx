@@ -26,11 +26,13 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import Header from '@/components/Header';
 import OwnerGate from '@/components/OwnerGate';
+import LoyaltyDashboard from '@/components/LoyaltyDashboard';
 import { useStore } from '@/lib/store';
 import { useOwnerStore } from '@/lib/ownerStore';
 import { formatPrice, calculateSales, getTotalSales } from '@/lib/utils';
 import { Order } from '@/lib/types';
 import { useWhatsAppStore, sendWhatsAppMessage, formatOrderMessage } from '@/lib/whatsappStore';
+import { useLoyaltyStore } from '@/lib/loyaltyStore';
 
 function AdminContent() {
   const settings = useStore((state) => state.settings);
@@ -825,6 +827,9 @@ function AdminContent() {
             </div>
           </div>
         </div>
+
+        {/* Loyalty Stats */}
+        <LoyaltyDashboard />
 
         {/* Sales Report (raw list) */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-stone-100 mb-8">

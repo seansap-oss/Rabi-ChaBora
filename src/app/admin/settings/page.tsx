@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Save, QrCode, Share2, Camera, Globe, AtSign, Image as ImageIcon, X, Palette, Type, Printer, Lock, MessageCircle, Plus, Trash2 } from 'lucide-react';
+import { Save, QrCode, Share2, Camera, Globe, AtSign, Image as ImageIcon, X, Palette, Type, Printer, Lock, MessageCircle, Plus, Trash2, Star } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import Header from '@/components/Header';
 import ReceiptDesigner from '@/components/ReceiptDesigner';
+import LoyaltySettings from '@/components/LoyaltySettings';
 import { useStore } from '@/lib/store';
 import { useLicense } from '@/lib/license';
 import { FONT_OPTIONS } from '@/lib/types';
@@ -23,7 +24,7 @@ export default function SettingsPage() {
   const [origin] = useState(getOrigin);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'general' | 'theme' | 'receipt' | 'whatsapp'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'theme' | 'receipt' | 'whatsapp' | 'loyalty'>('general');
   const { isUnlocked, unlockFeature, getPasswordHint } = useLicense();
   const waSettings = useWhatsAppStore((state) => state.settings);
   const updateWASettings = useWhatsAppStore((state) => state.updateSettings);
@@ -210,6 +211,15 @@ export default function SettingsPage() {
           >
             <MessageCircle className="w-4 h-4" />
             WhatsApp
+          </button>
+          <button
+            onClick={() => setActiveTab('loyalty')}
+            className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+              activeTab === 'loyalty' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500'
+            }`}
+          >
+            <Star className="w-4 h-4" />
+            Loyalty
           </button>
         </div>
 
@@ -774,8 +784,14 @@ export default function SettingsPage() {
               </div>
             </div>
           </>)}
+
         </>
         )}
+
+        {/* Loyalty Tab */}
+        {activeTab === 'loyalty' && (<>
+            <LoyaltySettings />
+        </>)}
 
         {/* Save Button */}
         <button

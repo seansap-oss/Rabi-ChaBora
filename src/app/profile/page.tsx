@@ -2,19 +2,26 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, LogOut, ShoppingCart, TrendingUp } from 'lucide-react';
+import { User, LogOut, ShoppingCart, TrendingUp, Phone, Star, Gift, Coffee } from 'lucide-react';
 import Header from '@/components/Header';
 import { useUserStore } from '@/lib/userStore';
+import { useLoyaltyStore } from '@/lib/loyaltyStore';
 import { formatPrice } from '@/lib/utils';
 
 export default function ProfilePage() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [loyaltyPhone, setLoyaltyPhone] = useState('');
+  const [loyaltyPhoneInput, setLoyaltyPhoneInput] = useState('');
   const isLoggedIn = useUserStore((state) => state.session?.loggedIn);
   const username = useUserStore((state) => state.session?.username);
   const logout = useUserStore((state) => state.logout);
   const getUserOrders = useUserStore((state) => state.getUserOrders);
   const getUserTotalSpent = useUserStore((state) => state.getUserTotalSpent);
+  const loyaltyConfig = useLoyaltyStore((state) => state.config);
+  const getCustomer = useLoyaltyStore((state) => state.getCustomer);
   const router = useRouter();
+
+  const loyaltyCustomer = loyaltyPhone ? getCustomer(loyaltyPhone) : null;
 
   if (!isLoggedIn || !username) {
     return (
@@ -96,6 +103,86 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
+
+        {/* Loyalty Card Section */}
+        {loyaltyConfig.enabled && (
+          <div className="mb-6">
+            <div className="bg-gradient-to-br from-orange-500 to-amber-500 rounded-2xl p-5 text-white shadow-lg shadow-orange-500/20 mb-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Coffee className="w-5 h-5" />
+                <h2 className="font-bold">Loyalty Card</h2>
+              </div>
+              <p className="text-orange-100 text-sm mb-3">
+                {loyaltyConfig.rewardDescription} — {loyaltyConfig.stampsRequired} stamps to earn
+              </p>
+              
+              {!loyaltyPhone ? (
+                <div>
+                  <p className="text-orange-100 text-xs mb-2">Enter your phone number to view your card:</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="tel"
+                      value={loyaltyPhoneInput}
+                      onChange={(e) => setLoyaltyPhoneInput(e.target.value)}
+                      placeholder="Phone number"
+                      className="flex-1 px-3 py-2 rounded-xl text-stone-800 text-sm focus:outline-none focus:ring-2 focus:ring-white"
+                    />
+                    <button
+                      onClick={() => setLoyaltyPhone(loyaltyPhoneInput)}
+                      className="bg-white text-orange-600 px-4 py-2 rounded-xl text-sm font-medium hover:bg-orange-50"
+                    >
+                      View
+                    </button>
+                  </div>
+                </div>
+              ) : loyaltyCustomer ? (
+                <div>
+                  {/* Stamp Grid */}
+                  <div className="flex gap-2 mb-3">
+                    {Array.from({ length: loyaltyConfig.stampsRequired }).map((_, i) => (
+                      <div
+                        key={i}
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg transition-all ${
+                          i < loyaltyCustomer.stamps
+                            ? 'bg-white text-orange-500 shadow-md'
+                            : 'bg-orange-400/30 text-orange-200'
+                        }`}
+                      >
+                        {i < loyaltyCustomer.stamps ? '☕' : '○'}
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <p className="text-orange-100 text-sm">
+                      {loyaltyCustomer.stamps} of {loyaltyConfig.stampsRequired} stamps
+                    </p>
+                    {loyaltyCustomer.rewardAvailable && (
+                      <span className="bg-white text-orange-600 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                        <Gift className="w-3 h-3" /> Reward Ready!
+                      </span>
+                    )}
+                  </div>
+
+                  {loyaltyCustomer.stamps === loyaltyConfig.stampsRequired - 1 && !loyaltyCustomer.rewardAvailable && (
+                    <p className="text-orange-100 text-xs mt-2">🔥 One more stamp for a free reward!</p>
+                  )}
+
+                  <div className="mt-3 pt-3 border-t border-orange-400/30 flex justify-between text-xs text-orange-200">
+                    <span>{loyaltyCustomer.totalVisits} total visits</span>
+                    <button onClick={() => setLoyaltyPhone('')} className="text-white font-medium">Change</button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-orange-100 text-sm mb-2">No loyalty account found for this number.</p>
+                  <p className="text-orange-200 text-xs mb-2">Place an order with this phone number to start earning stamps!</p>
+                  <button onClick={() => setLoyaltyPhone('')} className="text-white text-sm font-medium">Try another number</button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Order History */}
         <div className="mb-6">

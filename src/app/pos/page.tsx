@@ -29,6 +29,7 @@ import {
 import { Order, OrderDiscount, OrderStatus, MenuItem } from '@/lib/types';
 import { formatPrice, formatDate } from '@/lib/utils';
 import { useWhatsAppStore, sendWhatsAppMessage, formatOrderMessage } from '@/lib/whatsappStore';
+import { useLoyaltyStore } from '@/lib/loyaltyStore';
 import { useStore, fetchMenuFromAPI } from '@/lib/store';
 
 type CartItem = {
@@ -44,6 +45,7 @@ export default function POSPage() {
   const prevCount = useRef(0);
   const audioContextRef = useRef<AudioContext | null>(null);
   const waSettings = useWhatsAppStore((state) => state.settings);
+  const loyaltyConfig = useLoyaltyStore((state) => state.config);
   const cafeSettings = useStore((state) => state.settings);
   const menuItems = useStore((state) => state.menuItems);
   const setMenuItems = useStore((state) => state.setMenuItems);
@@ -244,6 +246,22 @@ export default function POSPage() {
         if (waSettings.enabled && waSettings.orderConfirmation && waSettings.recipients.length > 0) {
           const staffMsg = `📋 Order #${orderId.slice(-8)} confirmed\n👤 ${order.customerName || 'Walk-in'}\n📱 ${order.customerPhone || 'No phone'}\n💰 ${formatPrice(finalTotal)}`;
           sendToStaff(staffMsg);
+        }
+        
+        // Add loyalty stamp if phone provided
+        if (order.customerPhone && loyaltyConfig.enabled) {
+          const { addStamp } = useLoyaltyStore.getState();
+          const result = addStamp(order.customerPhone, orderId, finalTotal);
+          
+          // Send near-miss notification
+          if (result.stamps === loyaltyConfig.stampsRequired - 1 && waSettings.enabled) {
+            sendWhatsAppMessage(order.customerPhone, `☕ You're 1 stamp away from a FREE reward at ${cafeSettings.name}! Your next visit earns you: ${loyaltyConfig.rewardDescription}. Don't miss out!`);
+          }
+          
+          // Send reward earned notification
+          if (result.rewardReady && waSettings.enabled) {
+            sendWhatsAppMessage(order.customerPhone, `🎉 CONGRATULATIONS! You've earned a FREE reward at ${cafeSettings.name}! ${loyaltyConfig.rewardDescription}. Show this message to claim your reward on your next visit!`);
+          }
         }
       }
       setOrders(prev => prev.map(o => 

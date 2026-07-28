@@ -167,6 +167,49 @@ export interface ReceiptSettings {
   watermarkRotation: number;
 }
 
+export interface LoyaltyConfig {
+  enabled: boolean;
+  stampsRequired: number;
+  rewardType: 'free_item' | 'discount';
+  rewardDescription: string;
+  rewardMaxPrice: number;
+  rewardDiscountPercent: number;
+  bonusOnSignup: number;
+  stampCategories: string[];
+}
+
+export interface LoyaltyCustomer {
+  phone: string;
+  name: string;
+  stamps: number;
+  totalVisits: number;
+  totalSpent: number;
+  rewardAvailable: boolean;
+  rewardEarnedAt: number;
+  lastVisit: number;
+  enrolledAt: number;
+  history: LoyaltyStampRecord[];
+}
+
+export interface LoyaltyStampRecord {
+  date: number;
+  orderId: string;
+  amount: number;
+  stampsEarned: number;
+  rewardRedeemed: boolean;
+}
+
+export const DEFAULT_LOYALTY_CONFIG: LoyaltyConfig = {
+  enabled: false,
+  stampsRequired: 8,
+  rewardType: 'free_item',
+  rewardDescription: 'Free Coffee (up to ₹200)',
+  rewardMaxPrice: 200,
+  rewardDiscountPercent: 10,
+  bonusOnSignup: 2,
+  stampCategories: ['Coffee', 'Tea', 'Food', 'Desserts'],
+};
+
 export const DEFAULT_RECEIPT_SETTINGS: ReceiptSettings = {
   paperSize: '80mm',
   fontSize: 12,
