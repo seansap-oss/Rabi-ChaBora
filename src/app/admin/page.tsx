@@ -29,6 +29,10 @@ import { Order } from '@/lib/types';
 import { useWhatsAppStore, sendWhatsAppMessage, formatOrderMessage } from '@/lib/whatsappStore';
 
 function AdminContent() {
+  const settings = useStore((state) => state.settings);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [period, setPeriod] = useState<'day' | 'week' | 'month'>('day');
+  const ownerLogout = useOwnerStore((state) => state.logout);
   const ownerSales = useOwnerStore((state) => state.sales);
   const addOwnerSale = useOwnerStore((state) => state.addSale);
   const deleteOwnerSale = useOwnerStore((state) => state.deleteSale);
@@ -55,8 +59,6 @@ function AdminContent() {
     useOwnerStore.setState({ 
       sales: [],
       lastAutoSend: null,
-      lastMonthlySend: null,
-      isAuthenticated: false
     });
     
     fetchOrders();
