@@ -11,7 +11,8 @@ import {
   Save,
   Eye,
   EyeOff,
-  Link
+  Link,
+  Monitor
 } from 'lucide-react';
 import Header from '@/components/Header';
 import { useStore } from '@/lib/store';
@@ -214,7 +215,7 @@ export default function MenuManagementPage() {
                         <div className="flex items-center gap-2">
                           <h4 className="font-medium text-stone-800 truncate">{item.name}</h4>
                           {item.isSpecial && (
-                            <Star className="w-4 h-4 text-amber-500 fill-amber-500 flex-shrink-0" />
+                            <Monitor className="w-4 h-4 text-purple-500 flex-shrink-0" />
                           )}
                           {!item.available && (
                             <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full flex-shrink-0">
@@ -226,6 +227,17 @@ export default function MenuManagementPage() {
                         <p className="font-bold text-orange-600">{formatPrice(item.price)}</p>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => updateMenuItem(item.id, { isSpecial: !item.isSpecial })}
+                          title={item.isSpecial ? 'Remove from Menu Board' : 'Add to Menu Board'}
+                          className={`p-2 rounded-lg transition-colors ${
+                            item.isSpecial 
+                              ? 'bg-purple-100 text-purple-600 hover:bg-purple-200'
+                              : 'bg-stone-100 text-stone-400 hover:bg-stone-200'
+                          }`}
+                        >
+                          {item.isSpecial ? <Monitor className="w-4 h-4" /> : <Star className="w-4 h-4" />}
+                        </button>
                         <button
                           onClick={() => updateMenuItem(item.id, { available: !item.available })}
                           className={`p-2 rounded-lg transition-colors ${
@@ -418,7 +430,10 @@ export default function MenuManagementPage() {
                       onChange={(e) => setFormData({ ...formData, isSpecial: e.target.checked })}
                       className="w-4 h-4 text-orange-500 border-stone-300 rounded focus:ring-orange-500"
                     />
-                    <span className="text-sm text-stone-700">Special of the Day</span>
+                    <span className="text-sm text-stone-700 flex items-center gap-1">
+                      <Monitor className="w-3.5 h-3.5 text-purple-500" />
+                      Menu Board
+                    </span>
                   </label>
                   
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -431,6 +446,9 @@ export default function MenuManagementPage() {
                     <span className="text-sm text-stone-700">Available</span>
                   </label>
                 </div>
+                {formData.isSpecial && (
+                  <p className="text-xs text-purple-600 mt-1">Shows on Menu Board digital signage + highlighted as Special in customer menu</p>
+                )}
               </div>
               
               <div className="flex gap-3 mt-6">

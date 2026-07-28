@@ -82,17 +82,12 @@ function AdminContent() {
         const response = await fetch('/api/orders');
         if (response.ok) {
           const data = await response.json();
-          setOrders([]);
+          setOrders(data);
         }
       } catch {
         setOrders([]);
       }
     };
-    
-    useOwnerStore.setState({ 
-      sales: [],
-      lastAutoSend: null,
-    });
     
     fetchOrders();
     const interval = setInterval(fetchOrders, 5000);
@@ -558,20 +553,40 @@ function AdminContent() {
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-stone-100 mb-8">
           <h2 className="font-semibold text-stone-800 mb-4">Order Records</h2>
           <div className="space-y-2 max-h-96 overflow-y-auto">
-            {ownerSales.slice(0, 50).map((sale) => (
-              <div key={sale.id} className="flex items-center justify-between py-2 border-b border-stone-100 last:border-0">
+            {orders.slice(0, 50).map((order) => (
+              <div key={order.id} className="flex items-center justify-between py-2 border-b border-stone-100 last:border-0">
                 <div className="min-w-0">
-                  <p className="text-sm text-stone-800 truncate">
-                    {sale.items.map(i => `${i.quantity}x ${i.name}`).join(', ')}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-stone-800 truncate">
+                      {order.items.map(i => `${i.quantity}x ${i.menuItem.name}`).join(', ')}
+                    </p>
+                    <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${
+                      order.status === 'paid' || order.status === 'completed' ? 'bg-green-100 text-green-700' :
+                      order.status === 'pending_payment' ? 'bg-amber-100 text-amber-700' :
+                      'bg-stone-100 text-stone-600'
+                    }`}>
+                      {order.status === 'pending_payment' ? 'Pending' : order.status}
+                    </span>
+                  </div>
                   <p className="text-xs text-stone-400">
-                    {new Date(sale.createdAt).toLocaleString('en-IN')} • {sale.paymentMethod.toUpperCase()}
+                    {new Date(order.createdAt).toLocaleString('en-IN')} • {order.paymentMethod.toUpperCase()} • {order.orderType}
                   </p>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
-                  <span className="font-medium text-stone-800">{formatPrice(sale.total)}</span>
+                  <span className="font-medium text-stone-800">{formatPrice(order.total)}</span>
                   <button
-                    onClick={() => handleDeleteSale(sale.id)}
+                    onClick={async () => {
+                      if (confirm('Delete this order?')) {
+                        try {
+                          await fetch('/api/orders', {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ id: order.id }),
+                          });
+                          setOrders(prev => prev.filter(o => o.id !== order.id));
+                        } catch {}
+                      }
+                    }}
                     className="p-1 text-stone-300 hover:text-red-500 transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -580,8 +595,8 @@ function AdminContent() {
               </div>
             ))}
           </div>
-          {ownerSales.length > 50 && (
-            <p className="text-xs text-stone-400 text-center mt-3">Showing 50 of {ownerSales.length} records</p>
+          {orders.length > 50 && (
+            <p className="text-xs text-stone-400 text-center mt-3">Showing 50 of {orders.length} records</p>
           )}
         </div>
 
