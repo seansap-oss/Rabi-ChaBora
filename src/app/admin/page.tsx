@@ -29,11 +29,6 @@ import { Order } from '@/lib/types';
 import { useWhatsAppStore, sendWhatsAppMessage, formatOrderMessage } from '@/lib/whatsappStore';
 
 function AdminContent() {
-  const localOrders = useStore((state) => state.orders);
-  const settings = useStore((state) => state.settings);
-  const [orders, setOrders] = useState<Order[]>(localOrders);
-  const [period, setPeriod] = useState<'day' | 'week' | 'month'>('day');
-  const ownerLogout = useOwnerStore((state) => state.logout);
   const ownerSales = useOwnerStore((state) => state.sales);
   const addOwnerSale = useOwnerStore((state) => state.addSale);
   const deleteOwnerSale = useOwnerStore((state) => state.deleteSale);
@@ -49,37 +44,24 @@ function AdminContent() {
         const response = await fetch('/api/orders');
         if (response.ok) {
           const data = await response.json();
-          setOrders(data);
-          // Save paid orders to owner store
-          data.forEach((order: Order) => {
-            if (['paid', 'pending', 'preparing', 'ready', 'out_for_delivery', 'completed'].includes(order.status)) {
-              const exists = ownerSales.find(s => s.id === order.id);
-              if (!exists) {
-                addOwnerSale({
-                  id: order.id,
-                  items: order.items.map(i => ({
-                    name: i.menuItem.name,
-                    quantity: i.quantity,
-                    price: i.menuItem.price,
-                  })),
-                  total: order.total,
-                  paymentMethod: order.paymentMethod,
-                  orderType: order.orderType,
-                  createdAt: order.createdAt,
-                });
-              }
-            }
-          });
+          setOrders([]);
         }
       } catch {
-        setOrders(localOrders);
+        setOrders([]);
       }
     };
+    
+    // Clear owner store on admin page load to prevent duplicate keys
+    useOwnerStore.setState({ 
+      sales: [],
+      lastAutoSend: null,
+      lastMonthlySend: null,
+      isAuthenticated: false
+    });
     
     fetchOrders();
     const interval = setInterval(fetchOrders, 5000);
     return () => clearInterval(interval);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto-send to WhatsApp at configured time
